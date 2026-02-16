@@ -219,17 +219,25 @@ description: A skill for enforcing code quality standards through linting across
           <description>Strong type checking and null safety enforcement.</description>
         </setting>
         <setting name="analysis_options.yaml">
-          <description>Central configuration file for all Dart/Flutter linting rules.</description>
-          <example>
+          <description>Central configuration file for all Dart/Flutter linting rules. Choose flutter_lints for standard rules or very_good_analysis for stricter enterprise-grade rules.</description>
+          <example name="Standard Configuration">
+# Option 1: Standard Flutter linting (recommended for most projects)
 include: package:flutter_lints/flutter.yaml
-# or for stricter rules:
-# include: package:very_good_analysis/analysis_options.yaml
 
 linter:
   rules:
     - prefer_const_constructors
     - prefer_final_fields
     - avoid_print
+          </example>
+          <example name="Strict Configuration">
+# Option 2: Stricter rules for enterprise projects
+include: package:very_good_analysis/analysis_options.yaml
+
+# Add any custom rules or overrides here
+linter:
+  rules:
+    - prefer_const_constructors
           </example>
         </setting>
       </settings>
