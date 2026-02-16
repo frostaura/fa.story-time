@@ -162,6 +162,49 @@ description: A skill for writing comprehensive unit tests across multiple platfo
         <example>from unittest.mock import Mock, patch</example>
       </mocking>
     </platform>
+    <platform name="Flutter/Dart">
+      <framework>test, flutter_test, integration_test</framework>
+      <command name="Run Tests">flutter test</command>
+      <command name="Coverage">flutter test --coverage</command>
+      <command name="Watch Mode">flutter test --watch</command>
+      <command name="Integration Tests">flutter test integration_test</command>
+      <functions>
+        <function>group() - Test suite/group</function>
+        <function>test() - Individual unit test</function>
+        <function>testWidgets() - Widget test</function>
+        <function>setUp() - Setup before each test</function>
+        <function>tearDown() - Cleanup after each test</function>
+      </functions>
+      <assertions>
+        <library>expect (built-in)</library>
+        <example>expect(result, equals(expected))</example>
+        <example>expect(widget, findsOneWidget)</example>
+        <example>expect(() => fn(), throwsException)</example>
+      </assertions>
+      <widget-testing>
+        <description>Test widgets in isolation using WidgetTester.</description>
+        <example>await tester.pumpWidget(MyWidget())</example>
+        <example>await tester.tap(find.byType(ElevatedButton))</example>
+        <example>expect(find.text('Hello'), findsOneWidget)</example>
+      </widget-testing>
+      <golden-testing>
+        <description>Visual regression testing using golden file comparisons.</description>
+        <command name="Generate">flutter test --update-goldens</command>
+        <example>await expectLater(find.byType(MyWidget), matchesGoldenFile('my_widget.png'))</example>
+      </golden-testing>
+      <mocking>
+        <library>mockito, mocktail</library>
+        <example>final mock = MockUserService()</example>
+        <example>when(() => mock.getUser()).thenReturn(user)</example>
+      </mocking>
+      <best-practices>
+        <practice>Use testWidgets for widget tests, test for pure Dart logic</practice>
+        <practice>Mock dependencies using mockito or mocktail for unit tests</practice>
+        <practice>Use golden tests for visual consistency across platforms</practice>
+        <practice>Run integration tests on real devices or emulators for E2E validation</practice>
+        <practice>Pump and settle widgets properly: await tester.pumpAndSettle()</practice>
+      </best-practices>
+    </platform>
     <platform name="Java">
       <framework>JUnit 5 (recommended), TestNG</framework>
       <command name="Run Tests">mvn test or gradle test</command>

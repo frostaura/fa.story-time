@@ -35,22 +35,22 @@ description: A skill for providing agent guidance on performing manual regressio
     <category name="Testing Scope">
       <requirement name="Features">
         <value>Test ALL affected features and pages</value>
-        <description>Ensure complete coverage of changed functionality.</description>
+        <description>Ensure complete coverage of changed functionality across web, Android, and iOS platforms.</description>
       </requirement>
       <requirement name="Breakpoints">
-        <value>Test at ALL required breakpoints</value>
-        <description>Validate responsive behavior at 320px, 768px, 1024px, and 1440px+.</description>
+        <value>Test at ALL required breakpoints and platforms</value>
+        <description>Validate responsive behavior at 320px, 768px, 1024px, and 1440px+ for web. Test on representative mobile devices for Android and iOS using Flutter's adaptive design capabilities.</description>
       </requirement>
       <requirement name="States">
         <value>Test ALL interactive states for each element</value>
-        <description>Verify default, hover, focus, active, disabled, loading, and error states.</description>
+        <description>Verify default, hover (web), focus, active, disabled, loading, and error states. Consider platform-specific interactions (touch vs. mouse).</description>
       </requirement>
       <requirement name="Console">
-        <value>Monitor and report ALL console errors</value>
-        <description>Track JavaScript errors, warnings, and failed network requests.</description>
+        <value>Monitor and report ALL console errors and Flutter DevTools output</value>
+        <description>Track Dart exceptions, warnings, failed network requests, and Flutter framework errors using browser console (web) or Flutter DevTools (mobile).</description>
       </requirement>
       <rationale>
-        <description>Comprehensive coverage ensures visual and functional regressions are detected across all user scenarios.</description>
+        <description>Comprehensive coverage ensures visual and functional regressions are detected across all user scenarios and target platforms (web, Android, iOS).</description>
       </rationale>
     </category>
     <category name="Reporting & Collaboration">
@@ -91,8 +91,8 @@ description: A skill for providing agent guidance on performing manual regressio
         <description>Confirm that each interaction produces the correct result, state change, or navigation.</description>
       </step>
       <step name="Console">
-        <value>Check for console errors</value>
-        <description>Monitor browser console for JavaScript errors, warnings, or failed network requests.</description>
+        <value>Check for console errors and Flutter DevTools output</value>
+        <description>Monitor browser console for web targets, and Flutter DevTools for mobile targets. Check for Dart exceptions, warnings, or failed network requests.</description>
       </step>
       <step name="Edge Cases">
         <value>Test error states</value>
@@ -101,21 +101,22 @@ description: A skill for providing agent guidance on performing manual regressio
     </category>
     <category name="Visual Testing">
       <breakpoint name="Mobile">
-        <value>320px</value>
-        <description>Small phones - test touch targets, readability, and mobile-specific layouts. Capture full-page screenshot.</description>
+        <value>320px (web) / Small phones (mobile)</value>
+        <description>Small phones - test touch targets, readability, and mobile-specific layouts. Capture full-page screenshot. For Flutter mobile apps, test on small Android/iOS devices.</description>
       </breakpoint>
       <breakpoint name="Tablet">
-        <value>768px</value>
-        <description>Tablets/iPad - test medium layouts, touch interactions, and responsive transitions. Capture full-page screenshot.</description>
+        <value>768px (web) / Tablets (mobile)</value>
+        <description>Tablets/iPad - test medium layouts, touch interactions, and responsive transitions. Capture full-page screenshot. For Flutter mobile apps, test on tablet devices.</description>
       </breakpoint>
       <breakpoint name="Desktop">
-        <value>1024px</value>
-        <description>Laptops - test standard desktop layouts, hover states, and typical user viewport. Capture full-page screenshot.</description>
+        <value>1024px (web)</value>
+        <description>Laptops - test standard desktop layouts, hover states (web only), and typical user viewport. Capture full-page screenshot.</description>
       </breakpoint>
       <breakpoint name="Large">
-        <value>1440px+</value>
+        <value>1440px+ (web)</value>
         <description>Large monitors - test max-width constraints, spacing, and wide-screen layouts. Capture full-page screenshot.</description>
       </breakpoint>
+      <note>Flutter apps should use adaptive widgets (Material for Android, Cupertino for iOS) and be tested on both platforms to ensure platform-specific design patterns are properly implemented.</note>
     </category>
     <category name="Interactive States">
       <state name="Default">
@@ -123,8 +124,8 @@ description: A skill for providing agent guidance on performing manual regressio
         <description>Normal appearance of the element in its resting state. Verify styling, positioning, and content display correctly.</description>
       </state>
       <state name="Hover">
-        <value>Mouse over</value>
-        <description>Visual feedback when mouse cursor is over the element. Trigger hover and verify color, border, shadow, or other visual changes.</description>
+        <value>Mouse over (web only)</value>
+        <description>Visual feedback when mouse cursor is over the element. Trigger hover and verify color, border, shadow, or other visual changes. Note: Not applicable for mobile touch interfaces.</description>
       </state>
       <state name="Focus">
         <value>Keyboard focus</value>
@@ -167,7 +168,7 @@ description: A skill for providing agent guidance on performing manual regressio
         <description>Error states show correct messages and styling</description>
       </check>
       <check name="Console">
-        <description>No console errors or warnings appear</description>
+        <description>No console errors or warnings appear (browser console for web, Flutter DevTools for mobile)</description>
       </check>
       <check name="Loading States">
         <description>Loading states display during async operations</description>

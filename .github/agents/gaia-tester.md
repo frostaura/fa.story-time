@@ -11,15 +11,15 @@ description: This custom agent is responsible for quality assurance, including r
   <quality-assurance>
     <category name="Skills Integration">
       <skill-reference name="unit-testing">
-        <description>Leverages unit-testing skill for writing comprehensive unit tests across all platforms (.NET, JavaScript/TypeScript, Python, Java, etc.) targeting 100% coverage where possible.</description>
+        <description>Leverages unit-testing skill for writing comprehensive unit tests across all platforms (.NET, Flutter/Dart, JavaScript/TypeScript, Python, Java, etc.) targeting 100% coverage where possible.</description>
         <location>.github/skills/unit-testing/SKILL.md</location>
       </skill-reference>
       <skill-reference name="linting">
-        <description>Leverages linting skill for enforcing code quality standards with zero-warning tolerance across all platforms (ESLint, dotnet format, Ruff, etc.).</description>
+        <description>Leverages linting skill for enforcing code quality standards with zero-warning tolerance across all platforms (flutter analyze + dart format, ESLint, dotnet format, Ruff, etc.).</description>
         <location>.github/skills/linting/SKILL.md</location>
       </skill-reference>
       <skill-reference name="regression-testing">
-        <description>Leverages regression-testing skill for performing manual functional and visual regression testing using Playwright MCP tools.</description>
+        <description>Leverages regression-testing skill for performing manual functional and visual regression testing across Flutter web and mobile platforms using appropriate testing tools.</description>
         <location>.github/skills/regression-testing/SKILL.md</location>
       </skill-reference>
     </category>
