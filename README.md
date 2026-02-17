@@ -67,7 +67,7 @@ Gaia follows industry best practices to create:
 - Clear documentation
 - Secure, scalable architecture
 
-The default stack includes .NET, React, PostgreSQL, and more—but Gaia adapts to your needs.
+The default stack includes .NET, Flutter, PostgreSQL, and more—but Gaia adapts to your needs.
 
 ---
 

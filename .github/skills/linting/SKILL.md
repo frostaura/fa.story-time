@@ -187,6 +187,69 @@ description: A skill for enforcing code quality standards through linting across
         </setting>
       </settings>
     </platform>
+    <platform name="Flutter/Dart">
+      <linter name="flutter_lints">
+        <description>Official Flutter linting package providing recommended rules for Flutter apps.</description>
+        <package>flutter_lints package in dev_dependencies</package>
+        <configuration>analysis_options.yaml</configuration>
+      </linter>
+      <linter name="very_good_analysis">
+        <description>Stricter linting rules from Very Good Ventures for professional Flutter development.</description>
+        <package>very_good_analysis package in dev_dependencies</package>
+        <configuration>analysis_options.yaml</configuration>
+      </linter>
+      <linter name="dart format">
+        <description>Official Dart code formatter for consistent code style.</description>
+        <command name="Check">dart format --set-exit-if-changed .</command>
+        <command name="Fix">dart format .</command>
+      </linter>
+      <linter name="flutter analyze">
+        <description>Static analysis tool for Dart and Flutter code.</description>
+        <command name="Check">flutter analyze</command>
+        <configuration>analysis_options.yaml</configuration>
+      </linter>
+      <settings>
+        <setting name="Zero Warnings">
+          <value>true</value>
+          <description>Enforce zero-warning policy in Flutter analysis.</description>
+          <location>CI/CD: flutter analyze should exit with code 0</location>
+        </setting>
+        <setting name="Strong Mode">
+          <value>Enabled by default in Dart 3.x</value>
+          <description>Strong type checking and null safety enforcement.</description>
+        </setting>
+        <setting name="analysis_options.yaml">
+          <description>Central configuration file for all Dart/Flutter linting rules. Choose flutter_lints for standard rules or very_good_analysis for stricter enterprise-grade rules.</description>
+          <example name="Standard Configuration">
+# Option 1: Standard Flutter linting (recommended for most projects)
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    - prefer_const_constructors
+    - prefer_final_fields
+    - avoid_print
+          </example>
+          <example name="Strict Configuration">
+# Option 2: Stricter rules for enterprise projects
+include: package:very_good_analysis/analysis_options.yaml
+
+# Add any custom rules or overrides here
+linter:
+  rules:
+    - prefer_const_constructors
+          </example>
+        </setting>
+      </settings>
+      <integration>
+        <tool name="IDE Integration">
+          <description>VS Code (Dart extension), Android Studio, and IntelliJ IDEA provide real-time analysis and auto-fix capabilities.</description>
+        </tool>
+        <tool name="Pre-commit Hooks">
+          <description>Use dart format and flutter analyze in Git hooks to catch issues before commit.</description>
+        </tool>
+      </integration>
+    </platform>
     <platform name="Java">
       <linter name="Checkstyle">
         <description>Code style checker for Java.</description>

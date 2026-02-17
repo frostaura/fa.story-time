@@ -29,16 +29,20 @@ description: A skill for providing the default web stack for projects. This dict
     </category>
     <category name="Frontend">
       <technology name="Framework">
-        <value>React 18+ with TypeScript 5+</value>
-        <description>Modern UI library with hooks, concurrent features, and strict type safety.</description>
+        <value>Flutter 3.x with Dart 3.x</value>
+        <description>Cross-platform UI framework for web, Android, and iOS with reactive programming and strong type safety.</description>
       </technology>
       <technology name="State">
-        <value>Redux Toolkit + RTK Query</value>
-        <description>State management with built-in best practices and efficient data fetching capabilities.</description>
+        <value>Provider or Riverpod</value>
+        <description>Provider for most applications, Riverpod for enterprise-scale with compile-time safety and testing advantages.</description>
+      </technology>
+      <technology name="Architecture">
+        <value>MVVM with Repository Pattern</value>
+        <description>Separation of concerns with Model-View-ViewModel pattern and Repository for data layer abstraction.</description>
       </technology>
       <technology name="Linting">
-        <value>ESLint (strict) + Prettier</value>
-        <description>Code quality and formatting tools with --max-warnings 0 enforcement and TypeScript strict mode.</description>
+        <value>flutter_lints + very_good_analysis + dart format</value>
+        <description>Code quality analyzers with zero-warning enforcement. flutter_lints provides base rules, very_good_analysis adds stricter standards.</description>
       </technology>
     </category>
     <category name="Database">
@@ -79,12 +83,12 @@ description: A skill for providing the default web stack for projects. This dict
         <description>End-to-end and visual regression testing using browser automation for comprehensive UI validation.</description>
       </technology>
       <technology name="Unit">
-        <value>xUnit (.NET), Vitest (React)</value>
-        <description>Unit testing frameworks for backend and frontend with fast execution and modern features.</description>
+        <value>xUnit (.NET), flutter_test (Flutter)</value>
+        <description>Unit testing frameworks for backend and frontend with fast execution and modern features. Includes widget tests and golden tests for Flutter.</description>
       </technology>
       <technology name="Regression">
-        <value>Playwright spec files & cURL tests</value>
-        <description>Regression testing using Playwright specification files and cURL tests to cover all use cases, CRUD operations, and user flows.</description>
+        <value>Flutter integration_test & cURL tests</value>
+        <description>Regression testing using Flutter integration tests and cURL tests to cover all use cases, CRUD operations, and user flows across web and mobile platforms.</description>
       </technology>
       <technology name="Coverage">
         <value>Tiered by complexity</value>
