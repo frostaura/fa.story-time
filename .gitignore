@@ -147,3 +147,6 @@ nunit-*.xml
 /playwright/.cache/
 
 **/*.db*
+
+# Screenshots (local dev artifacts)
+storytime-*.png
