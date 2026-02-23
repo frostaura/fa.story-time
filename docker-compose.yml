@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: storytime
+      POSTGRES_USER: storytime
+      POSTGRES_PASSWORD: storytime
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storytime"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: src/backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=Host=postgres;Database=storytime;Username=storytime;Password=storytime
+      - ASPNETCORE_ENVIRONMENT=Development
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz:4317
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: src/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  tts-engine:
+    image: rhasspy/wyoming-piper:latest
+    ports:
+      - "5500:10200"
+    command: --voice en_US-lessac-medium
+    volumes:
+      - piper_data:/data
+
+  signoz:
+    image: signoz/signoz-otel-collector:latest
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      - SIGNOZ_COMPONENT=otel-collector
+
+volumes:
+  postgres_data:
+  ollama_data:
+  piper_data:
