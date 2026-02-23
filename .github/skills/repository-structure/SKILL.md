@@ -28,51 +28,28 @@ description: A skill for understanding and adhering to the repository structure.
       <description>Contains the source code of the project and linting systems for code quality. Especially for AI contribution.</description>
       <children>
         <directory name="frontend">
-          <description>Contains the Flutter frontend code for web, Android, and iOS platforms.</description>
+          <description>Contains the frontend code of the project, including UI components and client-side logic.</description>
           <children>
-            <directory name="lib">
-              <description>Flutter source code organized by architectural layers (MVVM with Repository Pattern).</description>
+            <directory name="src">
+              <description>Frontend source code organized by architectural layers.</description>
               <children>
-                <file name="main.dart">
-                  <description>Application entry point and initialization.</description>
-                </file>
-                <directory name="presentation">
-                  <description>UI layer: widgets, screens, and view-specific logic using MVVM pattern.</description>
+                <directory name="components">
+                  <description>Reusable UI components for the frontend application.</description>
                 </directory>
-                <directory name="domain">
-                  <description>Business logic layer: models, use cases, and business rules.</description>
+                <directory name="managers">
+                  <description>Orchestration and transformation layers for frontend operations.</description>
                 </directory>
-                <directory name="data">
-                  <description>Data layer: repositories, data sources (API clients, local storage), and data models.</description>
+                <directory name="engines">
+                  <description>Business logic and core processing for frontend functionality.</description>
                 </directory>
-                <directory name="core">
-                  <description>Shared utilities: themes, constants, helpers, and cross-cutting concerns.</description>
+                <directory name="data-access">
+                  <description>API clients, data fetching, and data persistence logic.</description>
                 </directory>
               </children>
             </directory>
-            <directory name="test">
-              <description>Flutter test files organized by test type.</description>
-              <children>
-                <directory name="unit">
-                  <description>Unit tests for business logic and pure Dart functions.</description>
-                </directory>
-                <directory name="widget">
-                  <description>Widget tests for UI components and screens.</description>
-                </directory>
-                <directory name="integration">
-                  <description>Integration tests for end-to-end user flows across platforms.</description>
-                </directory>
-                <directory name="golden">
-                  <description>Golden file tests for visual regression testing.</description>
-                </directory>
-              </children>
+            <directory name="tests">
+              <description>Frontend test cases and testing-related files.</description>
             </directory>
-            <file name="pubspec.yaml">
-              <description>Flutter project dependencies and configuration.</description>
-            </file>
-            <file name="analysis_options.yaml">
-              <description>Dart analyzer and linter configuration.</description>
-            </file>
           </children>
         </directory>
         <directory name="backend">
@@ -103,7 +80,7 @@ description: A skill for understanding and adhering to the repository structure.
       <description>Contains documentation for the project, including design docs and user guides.</description>
       <children>
         <file name="frontend.md">
-          <description>Design language specifications, user flows, and Flutter frontend design documentation including Material/Cupertino components, widget patterns, adaptive design for web/mobile, theming with design tokens, and interaction patterns.</description>
+          <description>Design language specifications, user flows, and frontend design documentation including UI/UX patterns, component usage, theming, and interaction patterns.</description>
         </file>
         <file name="use-cases.md">
           <description>Detailed use cases derived from requirements. Defines exact scenarios and behaviors that regression tests must cover to ensure all functional requirements are met.</description>

@@ -14,11 +14,10 @@ description: A skill for understanding how to run projects both locally and in p
     <responsibility>How to effectively spin up the backend and frontend services for testing and iterating on issues.</responsibility>
   </responsibilities>
   <hints>
-    <hint>`flutter run -d chrome` to start the development server for the web target. Use `flutter run` to run on connected mobile devices or emulators. Do this in a background terminal or detached mode so that the process lives beyond your response so the user may test.</hint>
-    <hint>`dotnet run` to start the backend server. Do this in a background terminal or detached mode so that the process lives beyond your response so the user may test.</hint>
+    <hint>`npm run dev` to start the development server for the frontend. Do this in a background terminal or detatched mode so that the process lives beyond your response so the user may test.</hint>
+    <hint>`dotnet run` to start the backend server. Do this in a background terminal or detatched mode so that the process lives beyond your response so the user may test.</hint>
     <hint>Use the docker-compose files for local development and production deployment. For local development, use `docker-compose up` to start the services. For production deployment, use `docker-compose -f docker-compose.prod.yml up` to start the services.</hint>
     <hint>When using Docker for development, ensure that you have the necessary environment variables set up in the `.env` file for local development. For production deployment, ensure that the environment variables are properly configured in your deployment environment.</hint>
     <hint>When using Docker for local development, ensure you build with no cache to ensure you have the latest changes.</hint>
-    <hint>For Flutter mobile development, use `flutter devices` to list available devices/emulators, then use `flutter run -d <device-id>` to run on a specific device.</hint>
   </hints>
 </skill>
