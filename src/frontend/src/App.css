@@ -1,0 +1,36 @@
+/* ───────────────────────────────────────────────
+ * App.css – component-level overrides (minimal)
+ * ─────────────────────────────────────────────── */
+
+/* Scrollbar hiding for horizontal scroll rows */
+.tw-scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Focus ring for keyboard navigation */
+*:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Range input thumb styling */
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}

@@ -1,98 +1,113 @@
 <p align="center">
-  <img src="https://github.com/frostaura/fa.templates.vibe-coding/blob/main/README.icon.png?raw=true" alt="Gaia" width="300" />
+  <img src="README.icon.png" alt="TaleWeaver" width="300" />
 </p>
 
-<h1 align="center"><b>Gaia</b></h1>
-<h3 align="center">full-stack apps. enterprise-grade. maintainable. customizable.</h3>
+# TaleWeaver 🌙
+
+A mobile-first Progressive Web App that generates and plays personalized AI-powered bedtime stories.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub Copilot](https://img.shields.io/badge/GitHub-Copilot-blue.svg)]()
-[![AI Agents](https://img.shields.io/badge/AI-5%20Agents-purple.svg)]()
 
 ---
 
-## What is Gaia?
+## Features
 
-Gaia is a team of AI agents that work together to build software for you. Just describe what you want, and Gaia handles the rest—architecture, code, tests, and documentation.
-
-**No complex setup. No learning curve. Just describe your idea.**
-
----
-
-## How to Use
-
-### In VS Code
-
-1. Open your project folder in VS Code
-2. Make sure GitHub Copilot is enabled
-3. Start a chat and describe what you want to build
-
-```
-Build me a task management app with user login
-```
-
-### In the Terminal
-
-```bash
-npm i -g @github/copilot && copilot -p "<your project request>"
-
-# Example:
-# "Create a REST API for a blog with posts and comments"
-```
+- **Quick Generate**: One-tap story generation with customizable duration
+- **Series Mode**: Never-ending cohesive stories with a persistent Story Bible
+- **One-shot Mode**: Standalone stories with full customization
+- **AI Pipeline**: 5-pass coherence algorithm (outline → scene plan → scene batch → stitch → polish)
+- **Parallax Posters**: 3-5 layer animated story covers with gyroscope/tilt support
+- **Procedural Fallback**: SVG-based poster generation when AI images are unavailable
+- **Privacy First**: No personal data stored server-side; all stories/profiles in browser LocalStorage
+- **Parental Controls**: WebAuthn-gated settings, Kid Mode, approval workflows
+- **Offline Support**: Service worker queues generation requests when offline
+- **Subscription Tiers**: Trial (7-day), Plus, and Premium via Stripe
 
 ---
 
-## Meet the Team
+## Tech Stack
 
-Gaia has 5 specialized agents that collaborate automatically:
-
-| Agent | What They Do |
-|-------|--------------|
-| **Orchestrator** | Coordinates the team and plans the work |
-| **Architect** | Designs the system and makes technology decisions |
-| **Developer** | Writes the code and tests |
-| **Tester** | Validates everything works correctly |
-| **Analyst** | Investigates issues and gathers insights |
-
-You don't need to talk to each agent—just describe your goal and they figure out what to do.
-
----
-
-## What Gaia Builds
-
-Gaia follows industry best practices to create:
-
-- Clean, maintainable code
-- Comprehensive tests
-- Clear documentation
-- Secure, scalable architecture
-
-The default stack includes .NET, Flutter, PostgreSQL, and more—but Gaia adapts to your needs.
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript 5, Vite, Redux Toolkit, Framer Motion |
+| Backend | .NET 10 Web API, Entity Framework Core |
+| Database | PostgreSQL (config & subscriptions only) |
+| AI | OpenRouter (Claude 3.5 Sonnet, Flux) |
+| TTS | Coqui TTS (local) |
+| Payments | Stripe |
+| Observability | OpenTelemetry → SigNoz |
 
 ---
 
 ## Project Structure
 
-When you use Gaia, your project will include:
+```
+docs/               # Architecture, database, use cases, design specs
+src/
+├── backend/        # .NET 10 Web API
+│   ├── TaleWeaver.Api/
+│   └── TaleWeaver.Api.Tests/
+└── frontend/       # React + Vite PWA
+    └── src/
+        ├── components/   # UI components
+        ├── pages/        # Route pages
+        ├── services/     # API client, localStorage, notifications
+        ├── store/        # Redux store & slices
+        └── types/        # TypeScript interfaces
+```
 
+---
+
+## Getting Started
+
+### Prerequisites
+
+- .NET 10 SDK
+- Node.js 18+
+- PostgreSQL 15+
+- (Optional) Coqui TTS server
+
+### Backend
+
+```bash
+cd src/backend
+dotnet restore
+dotnet build
+dotnet run --project TaleWeaver.Api
 ```
-docs/           ← Design documents and specifications
-src/            ← Your application code
-tests/          ← Automated tests
+
+### Frontend
+
+```bash
+cd src/frontend
+npm install
+npm run dev
 ```
+
+The frontend runs at http://localhost:5173
+
+### Configuration
+
+Copy `appsettings.Development.json` and configure:
+
+- PostgreSQL connection string
+- OpenRouter API key
+- Stripe keys
+- Coqui TTS URL
+
+---
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Database Schema](docs/database.md)
+- [Use Cases](docs/use-cases.md)
+- [Frontend Design](docs/frontend.md)
+- [Class Diagrams](docs/classes.md)
+- [Sequence Diagrams](docs/sequence.md)
 
 ---
 
 ## License
 
 MIT License - see [LICENSE](./LICENSE) for details.
-
----
-
-<p align="center">
-  <i>"In Greek mythology, Gaia is the personification of Earth and the ancestral mother of all life."</i>
-</p>
-
----
-
-> **Note for Gaia maintainers**: This README is a template for the Gaia toolkit itself. When scaffolding a new project for users, the **architect agent** should replace this with a project-specific README that describes the actual application being built.
