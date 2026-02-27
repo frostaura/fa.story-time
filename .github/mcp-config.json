@@ -8,7 +8,7 @@
                 "@playwright/mcp@latest"
             ]
         },
-        "Gaia (Remote)": {
+        "gaia-remote": {
             "url": "https://gaia.frostaura.net/mcp",
             "type": "http"
         }
