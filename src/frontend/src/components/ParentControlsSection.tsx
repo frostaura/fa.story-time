@@ -40,7 +40,7 @@ export function ParentControlsSection({
       </h3>
       <div className="parent-controls-row">
         <button
-          className="btn-secondary"
+          className="btn-parent-gate"
           data-testid="unlock-parent-settings-button"
           disabled={isUnlockingParent}
           onClick={onUnlockParentSettings}

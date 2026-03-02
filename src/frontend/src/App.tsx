@@ -332,6 +332,12 @@ const NETWORK_ERROR_PATTERNS = ['failed to fetch', 'networkerror', 'load failed'
 const isNetworkError = (message: string): boolean =>
   NETWORK_ERROR_PATTERNS.some((pattern) => message.toLowerCase().includes(pattern))
 
+const triggerHaptic = () => {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    navigator.vibrate(50)
+  }
+}
+
 function App() {
   const apiBaseUrl = resolveApiBaseUrl()
   const api = useMemo(() => createStoryTimeApi(apiBaseUrl), [apiBaseUrl])
@@ -474,7 +480,20 @@ function App() {
     })
   }, [kidShelfEnabled, refreshLibrary])
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && !isGenerating && !kidShelfEnabled) {
+        event.preventDefault()
+        void onGenerate()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
+
   const onGenerate = async () => {
+    triggerHaptic()
     setIsGenerating(true)
     setError(null)
     setPaywall(null)
@@ -773,6 +792,7 @@ function App() {
             </span>
           ) : null}
         </div>
+        <div className="header-toggle-divider" />
         <label className="toggle">
           <input
             aria-label={ui.kidShelf}
@@ -786,54 +806,55 @@ function App() {
       </header>
 
       {!kidShelfEnabled && (
-        <QuickGenerateCard
-        durationMinutes={durationMinutes}
-        homeStatus={homeStatus}
-        isGenerating={isGenerating}
-        mode={mode}
-        onChildNameChange={(childName) => setProfile((current) => ({ ...current, childName }))}
-        onDurationChange={setDurationMinutes}
-        onGenerate={() => {
-          void onGenerate()
-        }}
-        onModeChange={setMode}
-        onOneShotChange={(key, value) =>
-          setOneShotCustomization((current) => ({
-            ...current,
-            [key]: value,
-          }))
-        }
-        onReducedMotionChange={(reducedMotion) =>
-          setProfile((current) => ({ ...current, reducedMotion }))
-        }
-        oneShotCustomization={oneShotCustomization}
-        profile={profile}
-        ui={ui}
-        visible={homeStatus.quickGenerateVisible}
-      />
+        <div className="controls-row">
+          <QuickGenerateCard
+            durationMinutes={durationMinutes}
+            error={error ? (isNetworkError(error) ? ui.errorFriendly : error) : null}
+            homeStatus={homeStatus}
+            isGenerating={isGenerating}
+            mode={mode}
+            onChildNameChange={(childName) => setProfile((current) => ({ ...current, childName }))}
+            onDurationChange={setDurationMinutes}
+            onGenerate={() => {
+              void onGenerate()
+            }}
+            onModeChange={setMode}
+            onOneShotChange={(key, value) =>
+              setOneShotCustomization((current) => ({
+                ...current,
+                [key]: value,
+              }))
+            }
+            onReducedMotionChange={(reducedMotion) =>
+              setProfile((current) => ({ ...current, reducedMotion }))
+            }
+            oneShotCustomization={oneShotCustomization}
+            profile={profile}
+            ui={ui}
+            visible={homeStatus.quickGenerateVisible}
+          />
+
+          <ParentControlsSection
+            hasParentGateToken={Boolean(parentGateToken)}
+            isUnlockingParent={isUnlockingParent}
+            onAnalyticsChange={(analyticsEnabled) => {
+              void updateParentSettings(profile.notificationsEnabled, analyticsEnabled)
+            }}
+            onNotificationsChange={(notificationsEnabled) => {
+              void updateParentSettings(notificationsEnabled, profile.analyticsEnabled)
+            }}
+            onUnlockParentSettings={() => {
+              void unlockParentSettings()
+            }}
+            profile={profile}
+            ui={ui}
+            visible={homeStatus.parentControlsEnabled}
+          />
+        </div>
       )}
 
-      {!kidShelfEnabled && (
-      <ParentControlsSection
-        hasParentGateToken={Boolean(parentGateToken)}
-        isUnlockingParent={isUnlockingParent}
-        onAnalyticsChange={(analyticsEnabled) => {
-          void updateParentSettings(profile.notificationsEnabled, analyticsEnabled)
-        }}
-        onNotificationsChange={(notificationsEnabled) => {
-          void updateParentSettings(notificationsEnabled, profile.analyticsEnabled)
-        }}
-        onUnlockParentSettings={() => {
-          void unlockParentSettings()
-        }}
-        profile={profile}
-        ui={ui}
-        visible={homeStatus.parentControlsEnabled}
-      />
-      )}
-
-      {!kidShelfEnabled && error ? (
-        <div className="error-banner" data-testid="app-error" role="alert">
+      {kidShelfEnabled && error ? (
+        <div className="error-banner error-banner-standalone" data-testid="app-error" role="alert">
           <span aria-hidden="true" className="error-banner-icon">⚠️</span>
           <span className="error-banner-text">
             {isNetworkError(error) ? ui.errorFriendly : error}

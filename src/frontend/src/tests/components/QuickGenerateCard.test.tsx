@@ -9,6 +9,7 @@ describe('QuickGenerateCard', () => {
 
   const defaultProps = {
     durationMinutes: 7,
+    error: null as string | null,
     homeStatus: {
       defaultChildName: 'Dreamer',
       durationSliderVisible: true,

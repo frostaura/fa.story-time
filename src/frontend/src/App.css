@@ -10,6 +10,7 @@
   --color-accent: #6366f1;
   --color-accent-hover: #4f46e5;
   --color-accent-active: #4338ca;
+  --color-accent-soft: rgba(99, 102, 241, 0.12);
   --color-poster-gradient-start: #e7edff;
   --color-poster-gradient-end: #f6f7fc;
   --color-poster-border: #dfe4f0;
@@ -34,18 +35,19 @@
   --color-bg-gradient-1: #eceaff;
   --color-bg-gradient-2: #f5f6fa;
   --color-bg-gradient-3: #fff8ee;
+  --section-gap: 1.25rem;
 }
 
-/* --- App shell (MOD-07: wider max-width) --- */
+/* --- App shell (MAJ-01: wider max-width) --- */
 .app-shell {
   margin: 0 auto;
-  max-width: 56rem;
+  max-width: 64rem;
   padding: 2rem 1rem 4rem;
   color: var(--color-text-primary);
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-/* --- Header (MAJ-06: branding) --- */
+/* --- Header (MIN-01: branding group + divider) --- */
 .header {
   align-items: center;
   display: flex;
@@ -65,6 +67,17 @@
   width: 2rem;
 }
 
+.header-toggle-divider {
+  background: var(--color-border-subtle);
+  height: 1.5rem;
+  margin: 0 0.25rem;
+  width: 1px;
+}
+
+.header .toggle {
+  white-space: nowrap;
+}
+
 .tier-badge {
   background: var(--color-accent);
   border-radius: 0.375rem;
@@ -82,15 +95,20 @@
   font-weight: 600;
 }
 
-/* --- Cards (MIN-02: stronger shadow) --- */
+/* --- Cards (MIN-03: consistent section gap) --- */
 .quick-generate-card,
 .shelf {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
   border-radius: 1rem;
   box-shadow: var(--shadow-card);
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--section-gap);
   padding: 1rem;
+}
+
+/* --- MAJ-02: responsive controls row --- */
+.controls-row {
+  display: contents;
 }
 
 /* --- Quick Generate form (MAJ-04: grouped spacing) --- */
@@ -117,6 +135,22 @@
   transition: max-height 0.3s ease, opacity 0.3s ease;
   max-height: 600px;
   opacity: 1;
+}
+
+/* --- MIN-04: oneshot fields divider --- */
+.oneshot-divider {
+  border: none;
+  border-top: 1px solid var(--color-border-subtle);
+  margin: 0.5rem 0 0.75rem;
+}
+
+.oneshot-heading {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
 }
 
 /* --- MIN-04: heading hierarchy --- */
@@ -270,7 +304,13 @@ input[type='range'] {
 }
 
 input[type='range']::-webkit-slider-runnable-track {
-  background: var(--color-border-subtle);
+  background: linear-gradient(
+    to right,
+    var(--color-accent) 0%,
+    var(--color-accent) var(--slider-progress, 50%),
+    var(--color-border-subtle) var(--slider-progress, 50%),
+    var(--color-border-subtle) 100%
+  );
   border-radius: 0.25rem;
   height: 0.375rem;
 }
@@ -288,6 +328,12 @@ input[type='range']::-webkit-slider-thumb {
 
 input[type='range']::-moz-range-track {
   background: var(--color-border-subtle);
+  border-radius: 0.25rem;
+  height: 0.375rem;
+}
+
+input[type='range']::-moz-range-progress {
+  background: var(--color-accent);
   border-radius: 0.25rem;
   height: 0.375rem;
 }
@@ -350,6 +396,16 @@ button:disabled:hover {
   background: var(--color-accent);
   font-size: 1rem;
   padding: 0.75rem 1.5rem;
+}
+
+.btn-primary .sparkle {
+  animation: sparkle-pulse 2s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes sparkle-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
 }
 
 .btn-primary:hover {
@@ -421,7 +477,7 @@ button:disabled:hover {
   border-top-color: var(--color-text-primary);
 }
 
-/* --- Error banner (CRIT-02, MOD-01) --- */
+/* --- Error banner (CRIT-02: inline near generate button) --- */
 .error-banner {
   align-items: flex-start;
   background: var(--color-danger-bg);
@@ -432,8 +488,13 @@ button:disabled:hover {
   display: flex;
   font-weight: 600;
   gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  margin-top: 0.75rem;
   padding: 0.75rem 1rem;
+}
+
+.error-banner-standalone {
+  margin-bottom: var(--section-gap);
+  margin-top: 0;
 }
 
 .error-banner-icon {
@@ -447,13 +508,13 @@ button:disabled:hover {
   line-height: 1.5;
 }
 
-/* --- Parent controls (MOD-02: distinct styling) --- */
+/* --- Parent controls (MOD-04: calm styling) --- */
 .parent-controls-card {
   background: var(--color-parent-bg);
   border: 1px solid var(--color-parent-border);
   border-radius: 1rem;
   box-shadow: var(--shadow-card);
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--section-gap);
   padding: 1rem;
 }
 
@@ -481,6 +542,37 @@ button:disabled:hover {
   font-size: 0.8rem;
   font-style: italic;
   margin: 0.25rem 0 0 3.5rem;
+}
+
+/* MOD-04: calm passkey button */
+.btn-parent-gate {
+  background: transparent;
+  border: 1.5px solid var(--color-accent);
+  color: var(--color-accent);
+}
+
+.btn-parent-gate:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-hover);
+  box-shadow: none;
+  color: var(--color-accent-hover);
+}
+
+.btn-parent-gate:active {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-active);
+  color: var(--color-accent-active);
+}
+
+.btn-parent-gate:disabled {
+  background: transparent;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.btn-parent-gate:disabled:hover {
+  background: transparent;
+  box-shadow: none;
 }
 
 ul {
@@ -574,6 +666,27 @@ li {
   font-size: 2rem;
 }
 
+/* --- SUG-03: skeleton loading --- */
+.skeleton-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.skeleton-card {
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  background: linear-gradient(90deg, var(--color-border-subtle) 25%, var(--color-bg) 50%, var(--color-border-subtle) 75%);
+  background-size: 200% 100%;
+  border-radius: 0.75rem;
+  height: 4rem;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .paywall p {
   margin: 0.5rem 0;
 }
@@ -582,6 +695,90 @@ li {
 @media (min-width: 64rem) {
   :root {
     background: linear-gradient(160deg, var(--color-bg-gradient-1) 0%, var(--color-bg-gradient-2) 40%, var(--color-bg-gradient-3) 100%);
+  }
+}
+
+/* --- MAJ-02: tablet breakpoint (768px+) --- */
+@media (min-width: 48rem) {
+  .controls-row {
+    display: grid;
+    gap: var(--section-gap);
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .controls-row .quick-generate-card,
+  .controls-row .parent-controls-card {
+    margin-bottom: 0;
+  }
+
+  .shelf ul {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .shelf li {
+    margin-bottom: 0;
+  }
+}
+
+/* --- MAJ-02: desktop breakpoint (1024px+) --- */
+@media (min-width: 64rem) {
+  .shelf ul {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+/* --- MOD-02: prevent Kid Shelf label wrapping at narrow viewports --- */
+@media (max-width: 22.5rem) {
+  .header {
+    gap: 0.25rem;
+  }
+
+  .header h1 {
+    font-size: 1.25rem;
+  }
+
+  .header .toggle {
+    font-size: 0.85rem;
+  }
+}
+
+/* --- SUG-01: dark mode --- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text-primary: #f0f0f5;
+    --color-text-secondary: #a0a0a8;
+    --color-surface: #1e1e24;
+    --color-bg: #121218;
+    --color-border-subtle: #2e2e38;
+    --color-button-bg: #e0e0e6;
+    --color-button-hover: #cacacf;
+    --color-button-active: #b0b0b5;
+    --color-parent-bg: #1a1a24;
+    --color-parent-border: #2e2e40;
+    --color-secondary-hover-bg: #28282e;
+    --color-secondary-hover-border: #3e3e48;
+    --color-secondary-active-bg: #333338;
+    --color-danger-bg: rgba(180, 35, 24, 0.1);
+    --color-danger-border: rgba(180, 35, 24, 0.25);
+    --color-poster-gradient-start: #1e2040;
+    --color-poster-gradient-end: #1a1a24;
+    --color-poster-border: #2a2a3a;
+    --color-bg-gradient-1: #181830;
+    --color-bg-gradient-2: #121218;
+    --color-bg-gradient-3: #1a1814;
+    --color-accent-soft: rgba(99, 102, 241, 0.18);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.25);
+    background: var(--color-bg);
+  }
+
+  .btn-secondary {
+    color: var(--color-text-primary);
+  }
+
+  button {
+    color: #1e1e24;
   }
 }
 
@@ -606,6 +803,10 @@ li {
   }
 
   .spinner-icon {
+    animation: none !important;
+  }
+
+  .btn-primary .sparkle {
     animation: none !important;
   }
 }

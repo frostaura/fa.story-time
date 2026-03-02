@@ -140,6 +140,7 @@ export const appMessages = Object.freeze({
     oneShotMood: resolveUiMessage('oneShotMood'),
     oneShotThemeTrack: resolveUiMessage('oneShotThemeTrack'),
     oneShotNarrationStyle: resolveUiMessage('oneShotNarrationStyle'),
+    oneShotAdvancedOptions: resolveUiMessage('oneShotAdvancedOptions'),
     reducedMotionAriaLabel: resolveUiMessage('reducedMotionAriaLabel'),
     reducedMotionPlayback: resolveUiMessage('reducedMotionPlayback'),
     generatingStory: resolveUiMessage('generatingStory'),

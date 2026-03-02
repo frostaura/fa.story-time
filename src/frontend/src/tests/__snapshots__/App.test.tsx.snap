@@ -29,6 +29,9 @@ exports[`App > matches generated story visual baseline with poster layers 1`] = 
           Trial
         </span>
       </div>
+      <div
+        class="header-toggle-divider"
+      />
       <label
         class="toggle"
       >
@@ -40,176 +43,182 @@ exports[`App > matches generated story visual baseline with poster layers 1`] = 
         Kid Shelf
       </label>
     </header>
-    <section
-      aria-label="Quick Generate"
-      class="quick-generate-card"
-      data-testid="quick-generate-card"
+    <div
+      class="controls-row"
     >
-      <h2>
-        Quick Generate
-      </h2>
-      <div
-        class="form-group"
+      <section
+        aria-label="Quick Generate"
+        class="quick-generate-card"
+        data-testid="quick-generate-card"
       >
-        <label
-          for="child-name"
-        >
-          Child name
-        </label>
-        <input
-          data-testid="child-name-input"
-          id="child-name"
-          name="childName"
-          placeholder="Dreamer"
-          type="text"
-          value="Dreamer"
-        />
-      </div>
-      <div
-        class="form-group"
-      >
-        <label
-          for="duration"
-        >
-          Duration (6 min)
-        </label>
+        <h2>
+          Quick Generate
+        </h2>
         <div
-          class="slider-container"
+          class="form-group"
         >
-          <div
-            class="slider-track"
+          <label
+            for="child-name"
           >
-            <span
-              class="slider-bound"
+            Child name
+          </label>
+          <input
+            data-testid="child-name-input"
+            id="child-name"
+            name="childName"
+            placeholder="Dreamer"
+            type="text"
+            value="Dreamer"
+          />
+        </div>
+        <div
+          class="form-group"
+        >
+          <label
+            for="duration"
+          >
+            Duration (6 min)
+          </label>
+          <div
+            class="slider-container"
+          >
+            <div
+              class="slider-track"
             >
-              5 min
-            </span>
-            <input
-              aria-label="Duration"
-              aria-valuetext="6 minutes"
-              data-testid="duration-slider"
-              id="duration"
-              max="15"
-              min="5"
-              step="1"
-              type="range"
-              value="6"
-            />
-            <span
-              class="slider-bound"
-            >
-              15 min
-            </span>
+              <span
+                class="slider-bound"
+              >
+                5 min
+              </span>
+              <input
+                aria-label="Duration"
+                aria-valuetext="6 minutes"
+                data-testid="duration-slider"
+                id="duration"
+                max="15"
+                min="5"
+                step="1"
+                style="--slider-progress: 10%;"
+                type="range"
+                value="6"
+              />
+              <span
+                class="slider-bound"
+              >
+                15 min
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-      <div
-        class="form-group"
-      >
+        <div
+          class="form-group"
+        >
+          <label
+            for="mode"
+          >
+            Mode
+          </label>
+          <select
+            data-testid="mode-select"
+            id="mode"
+          >
+            <option
+              value="series"
+            >
+              Series
+            </option>
+            <option
+              value="one-shot"
+            >
+              One-shot
+            </option>
+          </select>
+        </div>
         <label
-          for="mode"
+          class="toggle"
         >
-          Mode
+          <input
+            aria-label="Reduced motion"
+            data-testid="reduced-motion-toggle"
+            type="checkbox"
+          />
+          Reduced motion
         </label>
-        <select
-          data-testid="mode-select"
-          id="mode"
-        >
-          <option
-            value="series"
-          >
-            Series
-          </option>
-          <option
-            value="one-shot"
-          >
-            One-shot
-          </option>
-        </select>
-      </div>
-      <label
-        class="toggle"
-      >
-        <input
-          aria-label="Reduced motion"
-          data-testid="reduced-motion-toggle"
-          type="checkbox"
-        />
-        Reduced motion playback
-      </label>
-      <button
-        class="btn-primary"
-        data-testid="generate-story-button"
-        type="button"
-      >
-        <span
-          aria-hidden="true"
-        >
-          ✨ 
-        </span>
-        Generate story
-      </button>
-    </section>
-    <section
-      aria-label="Parent controls"
-      class="parent-controls-card"
-      data-testid="parent-controls-section"
-    >
-      <h3
-        class="parent-controls-heading"
-      >
-        <span
-          aria-hidden="true"
-          class="lock-icon"
-        >
-          🔒
-        </span>
-        Parent Controls
-      </h3>
-      <div
-        class="parent-controls-row"
-      >
         <button
-          class="btn-secondary"
-          data-testid="unlock-parent-settings-button"
+          class="btn-primary"
+          data-testid="generate-story-button"
           type="button"
         >
-          Verify parent with passkey
+          <span
+            aria-hidden="true"
+            class="sparkle"
+          >
+            ✨ 
+          </span>
+          Generate story
         </button>
-      </div>
-      <label
-        class="toggle"
+      </section>
+      <section
+        aria-label="Parent controls"
+        class="parent-controls-card"
+        data-testid="parent-controls-section"
       >
-        <input
-          aria-label="Notifications enabled"
-          data-testid="notifications-toggle"
-          disabled=""
-          type="checkbox"
-        />
-        Notifications enabled
-      </label>
-      <p
-        class="toggle-disabled-hint"
-      >
-        Verify parent identity to change this setting
-      </p>
-      <label
-        class="toggle"
-      >
-        <input
-          aria-label="Analytics enabled"
-          data-testid="analytics-toggle"
-          disabled=""
-          type="checkbox"
-        />
-        Analytics enabled
-      </label>
-      <p
-        class="toggle-disabled-hint"
-      >
-        Verify parent identity to change this setting
-      </p>
-    </section>
+        <h3
+          class="parent-controls-heading"
+        >
+          <span
+            aria-hidden="true"
+            class="lock-icon"
+          >
+            🔒
+          </span>
+          Parent Controls
+        </h3>
+        <div
+          class="parent-controls-row"
+        >
+          <button
+            class="btn-parent-gate"
+            data-testid="unlock-parent-settings-button"
+            type="button"
+          >
+            Verify parent with passkey
+          </button>
+        </div>
+        <label
+          class="toggle"
+        >
+          <input
+            aria-label="Notifications enabled"
+            data-testid="notifications-toggle"
+            disabled=""
+            type="checkbox"
+          />
+          Notifications enabled
+        </label>
+        <p
+          class="toggle-disabled-hint"
+        >
+          Verify parent identity to change this setting
+        </p>
+        <label
+          class="toggle"
+        >
+          <input
+            aria-label="Analytics enabled"
+            data-testid="analytics-toggle"
+            disabled=""
+            type="checkbox"
+          />
+          Analytics enabled
+        </label>
+        <p
+          class="toggle-disabled-hint"
+        >
+          Verify parent identity to change this setting
+        </p>
+      </section>
+    </div>
     <section
       aria-label="Recent stories"
       class="shelf"
@@ -309,7 +318,7 @@ exports[`App > matches generated story visual baseline with poster layers 1`] = 
           ⭐
         </span>
         <p>
-          No favorites yet.
+          Star your favorites to find them here!
         </p>
       </div>
       <ul />
@@ -347,6 +356,9 @@ exports[`App > matches the quick generate visual baseline 1`] = `
           Trial
         </span>
       </div>
+      <div
+        class="header-toggle-divider"
+      />
       <label
         class="toggle"
       >
@@ -358,176 +370,182 @@ exports[`App > matches the quick generate visual baseline 1`] = `
         Kid Shelf
       </label>
     </header>
-    <section
-      aria-label="Quick Generate"
-      class="quick-generate-card"
-      data-testid="quick-generate-card"
+    <div
+      class="controls-row"
     >
-      <h2>
-        Quick Generate
-      </h2>
-      <div
-        class="form-group"
+      <section
+        aria-label="Quick Generate"
+        class="quick-generate-card"
+        data-testid="quick-generate-card"
       >
-        <label
-          for="child-name"
-        >
-          Child name
-        </label>
-        <input
-          data-testid="child-name-input"
-          id="child-name"
-          name="childName"
-          placeholder="Dreamer"
-          type="text"
-          value="Dreamer"
-        />
-      </div>
-      <div
-        class="form-group"
-      >
-        <label
-          for="duration"
-        >
-          Duration (6 min)
-        </label>
+        <h2>
+          Quick Generate
+        </h2>
         <div
-          class="slider-container"
+          class="form-group"
         >
-          <div
-            class="slider-track"
+          <label
+            for="child-name"
           >
-            <span
-              class="slider-bound"
+            Child name
+          </label>
+          <input
+            data-testid="child-name-input"
+            id="child-name"
+            name="childName"
+            placeholder="Dreamer"
+            type="text"
+            value="Dreamer"
+          />
+        </div>
+        <div
+          class="form-group"
+        >
+          <label
+            for="duration"
+          >
+            Duration (6 min)
+          </label>
+          <div
+            class="slider-container"
+          >
+            <div
+              class="slider-track"
             >
-              5 min
-            </span>
-            <input
-              aria-label="Duration"
-              aria-valuetext="6 minutes"
-              data-testid="duration-slider"
-              id="duration"
-              max="15"
-              min="5"
-              step="1"
-              type="range"
-              value="6"
-            />
-            <span
-              class="slider-bound"
-            >
-              15 min
-            </span>
+              <span
+                class="slider-bound"
+              >
+                5 min
+              </span>
+              <input
+                aria-label="Duration"
+                aria-valuetext="6 minutes"
+                data-testid="duration-slider"
+                id="duration"
+                max="15"
+                min="5"
+                step="1"
+                style="--slider-progress: 10%;"
+                type="range"
+                value="6"
+              />
+              <span
+                class="slider-bound"
+              >
+                15 min
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-      <div
-        class="form-group"
-      >
+        <div
+          class="form-group"
+        >
+          <label
+            for="mode"
+          >
+            Mode
+          </label>
+          <select
+            data-testid="mode-select"
+            id="mode"
+          >
+            <option
+              value="series"
+            >
+              Series
+            </option>
+            <option
+              value="one-shot"
+            >
+              One-shot
+            </option>
+          </select>
+        </div>
         <label
-          for="mode"
+          class="toggle"
         >
-          Mode
+          <input
+            aria-label="Reduced motion"
+            data-testid="reduced-motion-toggle"
+            type="checkbox"
+          />
+          Reduced motion
         </label>
-        <select
-          data-testid="mode-select"
-          id="mode"
-        >
-          <option
-            value="series"
-          >
-            Series
-          </option>
-          <option
-            value="one-shot"
-          >
-            One-shot
-          </option>
-        </select>
-      </div>
-      <label
-        class="toggle"
-      >
-        <input
-          aria-label="Reduced motion"
-          data-testid="reduced-motion-toggle"
-          type="checkbox"
-        />
-        Reduced motion playback
-      </label>
-      <button
-        class="btn-primary"
-        data-testid="generate-story-button"
-        type="button"
-      >
-        <span
-          aria-hidden="true"
-        >
-          ✨ 
-        </span>
-        Generate story
-      </button>
-    </section>
-    <section
-      aria-label="Parent controls"
-      class="parent-controls-card"
-      data-testid="parent-controls-section"
-    >
-      <h3
-        class="parent-controls-heading"
-      >
-        <span
-          aria-hidden="true"
-          class="lock-icon"
-        >
-          🔒
-        </span>
-        Parent Controls
-      </h3>
-      <div
-        class="parent-controls-row"
-      >
         <button
-          class="btn-secondary"
-          data-testid="unlock-parent-settings-button"
+          class="btn-primary"
+          data-testid="generate-story-button"
           type="button"
         >
-          Verify parent with passkey
+          <span
+            aria-hidden="true"
+            class="sparkle"
+          >
+            ✨ 
+          </span>
+          Generate story
         </button>
-      </div>
-      <label
-        class="toggle"
+      </section>
+      <section
+        aria-label="Parent controls"
+        class="parent-controls-card"
+        data-testid="parent-controls-section"
       >
-        <input
-          aria-label="Notifications enabled"
-          data-testid="notifications-toggle"
-          disabled=""
-          type="checkbox"
-        />
-        Notifications enabled
-      </label>
-      <p
-        class="toggle-disabled-hint"
-      >
-        Verify parent identity to change this setting
-      </p>
-      <label
-        class="toggle"
-      >
-        <input
-          aria-label="Analytics enabled"
-          data-testid="analytics-toggle"
-          disabled=""
-          type="checkbox"
-        />
-        Analytics enabled
-      </label>
-      <p
-        class="toggle-disabled-hint"
-      >
-        Verify parent identity to change this setting
-      </p>
-    </section>
+        <h3
+          class="parent-controls-heading"
+        >
+          <span
+            aria-hidden="true"
+            class="lock-icon"
+          >
+            🔒
+          </span>
+          Parent Controls
+        </h3>
+        <div
+          class="parent-controls-row"
+        >
+          <button
+            class="btn-parent-gate"
+            data-testid="unlock-parent-settings-button"
+            type="button"
+          >
+            Verify parent with passkey
+          </button>
+        </div>
+        <label
+          class="toggle"
+        >
+          <input
+            aria-label="Notifications enabled"
+            data-testid="notifications-toggle"
+            disabled=""
+            type="checkbox"
+          />
+          Notifications enabled
+        </label>
+        <p
+          class="toggle-disabled-hint"
+        >
+          Verify parent identity to change this setting
+        </p>
+        <label
+          class="toggle"
+        >
+          <input
+            aria-label="Analytics enabled"
+            data-testid="analytics-toggle"
+            disabled=""
+            type="checkbox"
+          />
+          Analytics enabled
+        </label>
+        <p
+          class="toggle-disabled-hint"
+        >
+          Verify parent identity to change this setting
+        </p>
+      </section>
+    </div>
     <section
       aria-label="Recent stories"
       class="shelf"
@@ -546,7 +564,7 @@ exports[`App > matches the quick generate visual baseline 1`] = `
           🌙
         </span>
         <p>
-          No stories generated yet.
+          Generate your first bedtime adventure!
         </p>
       </div>
       <ul />
@@ -569,7 +587,7 @@ exports[`App > matches the quick generate visual baseline 1`] = `
           ⭐
         </span>
         <p>
-          No favorites yet.
+          Star your favorites to find them here!
         </p>
       </div>
       <ul />

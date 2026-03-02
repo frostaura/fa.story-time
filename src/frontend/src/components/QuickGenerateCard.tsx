@@ -35,6 +35,7 @@ type QuickGenerateCardProps = {
   mode: Mode
   oneShotCustomization: OneShotCustomization
   isGenerating: boolean
+  error: string | null
   onChildNameChange: (value: string) => void
   onDurationChange: (value: number) => void
   onModeChange: (value: Mode) => void
@@ -61,6 +62,7 @@ export function QuickGenerateCard({
   mode,
   oneShotCustomization,
   isGenerating,
+  error,
   onChildNameChange,
   onDurationChange,
   onModeChange,
@@ -79,6 +81,10 @@ export function QuickGenerateCard({
     }
     return ui[ONESHOT_PLACEHOLDER_KEYS[key]] as string
   }
+
+  const sliderProgress = homeStatus.durationMaxMinutes > homeStatus.durationMinMinutes
+    ? ((durationMinutes - homeStatus.durationMinMinutes) / (homeStatus.durationMaxMinutes - homeStatus.durationMinMinutes)) * 100
+    : 50
 
   return (
     <section aria-label={ui.quickGenerate} className="quick-generate-card" data-testid="quick-generate-card">
@@ -112,6 +118,7 @@ export function QuickGenerateCard({
                 min={homeStatus.durationMinMinutes}
                 onChange={(event) => onDurationChange(Number(event.target.value))}
                 step={1}
+                style={{ '--slider-progress': `${sliderProgress}%` } as React.CSSProperties}
                 type="range"
                 value={durationMinutes}
               />
@@ -136,6 +143,8 @@ export function QuickGenerateCard({
 
       {mode === storyModes.oneShot ? (
         <div className="oneshot-fields">
+          <hr className="oneshot-divider" />
+          <p className="oneshot-heading">{ui.oneShotAdvancedOptions ?? 'Advanced options'}</p>
           <div className="form-group">
             <label htmlFor="one-shot-arc">{ui.oneShotStoryArc}</label>
             <input
@@ -228,9 +237,16 @@ export function QuickGenerateCard({
             {ui.generatingStory}
           </span>
         ) : (
-          <><span aria-hidden="true">✨ </span>{ui.generateStory}</>
+          <><span aria-hidden="true" className="sparkle">✨ </span>{ui.generateStory}</>
         )}
       </button>
+
+      {error ? (
+        <div className="error-banner" data-testid="inline-error" role="alert">
+          <span aria-hidden="true" className="error-banner-icon">⚠️</span>
+          <span className="error-banner-text">{error}</span>
+        </div>
+      ) : null}
     </section>
   )
 }

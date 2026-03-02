@@ -10,16 +10,22 @@ export type FavoriteStoryItem = StoryArtifact
 type FavoritesShelfProps = {
   ui: UiMessages
   stories: FavoriteStoryItem[]
+  isLoading?: boolean
   getLayerStyle: (layer: PosterLayer, reducedMotion: boolean) => CSSProperties
   onApproveStory: (storyId: string) => void
   onToggleFavorite: (storyId: string) => void
 }
 
-export function FavoritesShelf({ ui, stories, getLayerStyle, onApproveStory, onToggleFavorite }: FavoritesShelfProps) {
+export function FavoritesShelf({ ui, stories, isLoading, getLayerStyle, onApproveStory, onToggleFavorite }: FavoritesShelfProps) {
   return (
     <section aria-label={ui.favoriteStoriesAria} className="shelf" data-testid="favorite-stories-shelf">
       <h3>{ui.favorites}</h3>
-      {stories.length === 0 ? (
+      {isLoading ? (
+        <div className="skeleton-container" data-testid="favorites-skeleton">
+          <div className="skeleton-card" />
+          <div className="skeleton-card" />
+        </div>
+      ) : stories.length === 0 ? (
         <div className="empty-state">
           <span aria-hidden="true" className="empty-state-icon">⭐</span>
           <p>{ui.noFavoritesYet}</p>
