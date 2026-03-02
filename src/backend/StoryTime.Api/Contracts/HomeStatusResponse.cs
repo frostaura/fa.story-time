@@ -8,6 +8,7 @@ public sealed record HomeStatusResponse(
     int DurationDefaultMinutes,
     string DefaultChildName,
     bool ParentControlsEnabled,
+    string DefaultTier,
     OneShotDefaultsResponse OneShotDefaults);
 
 public sealed record OneShotDefaultsResponse(

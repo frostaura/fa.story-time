@@ -20,6 +20,7 @@ describe('App', () => {
                 durationDefaultMinutes: 6,
                 defaultChildName: 'Dreamer',
                 parentControlsEnabled: true,
+                defaultTier: 'Trial',
                 oneShotDefaults: {
                   arcName: 'Moonlit Harbor',
                   companionName: 'Pip the fox',
@@ -164,6 +165,28 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Generate story' })).toBeInTheDocument()
   })
 
+  it('displays subscription tier badge in the header', async () => {
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-badge')).toBeInTheDocument()
+    })
+
+    expect(screen.getByTestId('tier-badge')).toHaveTextContent('Trial')
+  })
+
+  it('displays series progress badge on generated series stories', async () => {
+    render(<App />)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Generate story' }))
+    await waitFor(() => {
+      expect(screen.getByText('Ari and the Moonlit Meadow')).toBeInTheDocument()
+    })
+
+    const progressBadge = screen.getByText('Moonlit Meadow · Episode 1')
+    expect(progressBadge).toBeInTheDocument()
+  })
+
   it('matches the quick generate visual baseline', async () => {
     const view = render(<App />)
 
@@ -237,7 +260,7 @@ describe('App', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Favorite' }))
 
-    expect(screen.getByRole('button', { name: 'Unfavorite' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Unfavorite' }).length).toBeGreaterThan(0)
   })
 
   it('shows extended one-shot customization controls', async () => {

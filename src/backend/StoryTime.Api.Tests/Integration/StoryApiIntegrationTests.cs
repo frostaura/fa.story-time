@@ -32,6 +32,7 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         Assert.Equal(15, response.DurationMaxMinutes);
         Assert.Equal("Dreamer", response.DefaultChildName);
         Assert.True(response.ParentControlsEnabled);
+        Assert.Equal("Trial", response.DefaultTier);
         Assert.Equal("a gentle friend", response.OneShotDefaults.CompanionName);
         Assert.Equal("moonlit meadow paths", response.OneShotDefaults.Setting);
     }

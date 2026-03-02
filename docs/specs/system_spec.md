@@ -16,7 +16,7 @@ StoryTime is a calm-first, mobile-first PWA that lets families generate and play
 - **Series mode**: persistent Story Bible, continuity-safe continuations.
 - **One-shot mode**: standalone stories with full customization.
 - **Multi-pass AI flow**: outline -> scene plan -> scene batch -> stitch -> polish.
-- **LLM provider**: All LLM requests must route through OpenRouter; no local/on-device model inference.
+- **LLM provider**: All remote LLM requests must route through OpenRouter; deterministic non-LLM generation is allowed when AI orchestration is disabled.
 
 ### 3.2 Playback and Media
 - Teaser narration before approval when approval mode is on.

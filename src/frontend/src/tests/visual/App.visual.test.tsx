@@ -22,6 +22,7 @@ describe('App visual regression', () => {
               durationDefaultMinutes: 6,
               defaultChildName: 'Dreamer',
               parentControlsEnabled: true,
+              defaultTier: 'Trial',
               oneShotDefaults: {
                 arcName: 'Moonlit Harbor',
                 companionName: 'Pip the fox',

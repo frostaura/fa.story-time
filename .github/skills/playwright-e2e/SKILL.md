@@ -1,6 +1,6 @@
 ---
 name: playwright-e2e
-description: Add/extend Playwright E2E/integration specs for web use-case changes. UC ID must be in spec filename. Prefer existing repo conventions; else standardize.
+description: Add/extend Playwright E2E/integration specs for web use-case changes. Prefer existing repo naming conventions; include UC ID when introducing new use-case-specific specs.
 ---
 
 # Playwright E2E / Integration Specs (Web)
@@ -25,8 +25,8 @@ Required for web use-case changes.
 ## Outputs
 
 - Playwright specs added/updated
-- Spec filename includes UC ID (required):
-  - `uc-###-<kebab-title>.spec.(ts|js)` (default)
+- Spec filename follows existing repo conventions; for new use-case-specific coverage prefer:
+  - `uc-###-<kebab-title>.spec.(ts|js)`
 - Specs follow repo convention if present; otherwise standardize to `/tests/e2e/`
 - CI can run Playwright (or explicit MCP blockers if missing credentials/env)
 
@@ -34,7 +34,7 @@ Required for web use-case changes.
 
 - Prefer existing framework/location if already present.
 - If no E2E framework exists, standardize on Playwright.
-- UC ID must be in the spec filename (required by Gaia).
+- Preserve existing spec naming conventions in repos with established patterns.
 - Keep specs stable: prefer role/text selectors; avoid brittle CSS selectors.
 - Do not paste large test outputs in chat.
 
@@ -63,9 +63,9 @@ For each affected UC:
 - Cover at least one critical edge/validation/auth case when relevant.
 - Assert observable outcomes (UI states, navigation, key content, API-driven UI updates).
 
-Name specs:
+Name new use-case-specific specs as:
 
-- `uc-###-<kebab-title>.spec.ts`
+- `uc-###-<kebab-title>.spec.ts` (preferred)
 
 ## Step 4 — Data + environment strategy
 

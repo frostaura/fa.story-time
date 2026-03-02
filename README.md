@@ -31,7 +31,7 @@ src/
 
 ## Prerequisites
 - .NET 10 SDK
-- Node.js 18+
+- Node.js 22+
 - npm
 - make
 

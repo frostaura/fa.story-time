@@ -35,9 +35,16 @@ public sealed class StoryTimeOptions
             return limits;
         }
 
-        if (TierLimits.TryGetValue("Trial", out var trial))
+        var defaultTier = Checkout.DefaultTier?.Trim();
+        if (!string.IsNullOrWhiteSpace(defaultTier) && TierLimits.TryGetValue(defaultTier, out var configuredDefault))
         {
-            return trial;
+            return configuredDefault;
+        }
+
+        var firstConfiguredTier = TierLimits.Values.FirstOrDefault();
+        if (firstConfiguredTier is not null)
+        {
+            return firstConfiguredTier;
         }
 
         throw new InvalidOperationException(Messages.Internal("TierLimitsMustDefineTrial"));
@@ -135,6 +142,8 @@ public sealed class GenerationOptions
 
     public Dictionary<string, double> PosterRoleSpeedMultipliers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    public string PalettePrefix { get; set; } = "palette-";
+
     public GenerationFallbackOptions Fallbacks { get; set; } = new();
 
     public AiOrchestrationOptions AiOrchestration { get; set; } = new();
@@ -180,6 +189,10 @@ public sealed class NarrativeTemplateOptions
     public string ContinuityFact { get; set; } = "";
 
     public string EpisodeSummary { get; set; } = "";
+
+    public string PersistedArcObjective { get; set; } = "";
+
+    public string PersistedEpisodeSummary { get; set; } = "";
 
     public string OneShotOutline { get; set; } = "";
 
@@ -270,6 +283,10 @@ public sealed class ProceduralPosterGeometryOptions
 
     public int DriftVariance { get; set; } = 160;
 
+    /// <summary>
+    /// Centers the signed drift range around 0 by subtracting half of <see cref="DriftVariance"/>.
+    /// With the default variance (160), 80 yields a balanced [-80, 79] drift span.
+    /// </summary>
     public int DriftCenterOffset { get; set; } = 80;
 
     public int MoonCenterX { get; set; } = 512;
@@ -345,6 +362,8 @@ public sealed class CatalogOptions
     public int KidShelfFavoritesLimit { get; set; }
 
     public int HashedIdentifierByteLength { get; set; } = 6;
+
+    public string AnonymousIdentifierFallback { get; set; } = "";
 
     public List<string> NarrativeLeakageMarkers { get; set; } = [];
 
@@ -447,13 +466,21 @@ public sealed class AiOrchestrationOptions
 
     public bool LocalFallbackEnabled { get; set; }
 
+    public bool EnforceOpenRouterEndpoint { get; set; } = true;
+
     public string Endpoint { get; set; } = "";
 
     public string ApiKey { get; set; } = "";
 
+    public string OpenRouterReferer { get; set; } = "";
+
+    public string OpenRouterTitle { get; set; } = "";
+
     public string Model { get; set; } = "";
 
     public int TimeoutSeconds { get; set; }
+
+    public string StageResponseFormatInstruction { get; set; } = "";
 
     public AiStageNameOptions StageNames { get; set; } = new();
 }

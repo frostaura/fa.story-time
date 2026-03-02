@@ -1,0 +1,5 @@
+src/backend/StoryTime.Api/ @deanmartin
+src/backend/StoryTime.Api.Tests/ @deanmartin
+src/frontend/src/ @deanmartin
+src/frontend/tests/ @deanmartin
+src/frontend/tests/playwright/ @deanmartin

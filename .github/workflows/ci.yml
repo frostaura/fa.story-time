@@ -28,6 +28,9 @@ jobs:
       - name: Restore frontend deps
         run: cd src/frontend && npm ci
 
+      - name: Install Playwright browser
+        run: cd src/frontend && npx playwright install chromium
+
       - name: Restore backend deps
         run: dotnet restore src/backend/StoryTime.slnx
 
@@ -39,3 +42,79 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Test governance guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          patterns = [
+              ("focused", re.compile(r"\.only\(")),
+              ("skipped", re.compile(r"\.skip\(")),
+          ]
+          test_suffixes = (".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx", ".test.js", ".spec.js", ".cs")
+
+          violations = []
+          for path in Path("src").rglob("*"):
+              if not path.is_file() or not str(path).endswith(test_suffixes):
+                  continue
+
+              content = path.read_text(encoding="utf-8")
+              for label, pattern in patterns:
+                  for match in pattern.finditer(content):
+                      line = content.count("\n", 0, match.start()) + 1
+                      violations.append(f"{path}:{line}: {label} test marker")
+
+          if violations:
+              print("Test governance violations detected:")
+              for violation in violations:
+                  print(violation)
+              sys.exit(1)
+          PY
+
+      - name: Frontend coverage thresholds
+        run: cd src/frontend && npm run test:unit -- --coverage
+
+      - name: Coverage
+        run: make test-coverage
+
+      - name: Backend coverage threshold
+        run: |
+          python3 - <<'PY'
+          import glob
+          import sys
+          import xml.etree.ElementTree as ET
+
+          threshold = 0.80
+          files = glob.glob("src/backend/**/TestResults/**/coverage.cobertura.xml", recursive=True)
+          if not files:
+              print("No backend coverage files found.", file=sys.stderr)
+              sys.exit(1)
+
+          best_rate = None
+          for path in files:
+              root = ET.parse(path).getroot()
+              for package in root.findall(".//package"):
+                  if package.attrib.get("name") != "StoryTime.Api":
+                      continue
+
+                  rate = float(package.attrib.get("line-rate", "0"))
+                  best_rate = rate if best_rate is None else max(best_rate, rate)
+
+          if best_rate is None:
+              print("No StoryTime.Api package line-rate found in coverage report.", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"StoryTime.Api line coverage: {best_rate:.2%}")
+          if best_rate < threshold:
+              print(f"Coverage below threshold: required {threshold:.0%}, got {best_rate:.2%}.", file=sys.stderr)
+              sys.exit(1)
+          PY
+
+      - name: Upload backend coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: src/backend/**/TestResults/**/coverage.cobertura.xml

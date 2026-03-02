@@ -347,6 +347,7 @@ function App() {
     durationDefaultMinutes: runtimeConfig.durationSelection ?? 1,
     defaultChildName: runtimeConfig.defaultChildName,
     parentControlsEnabled: runtimeConfig.homeStatusFallback.parentControlsEnabled,
+    defaultTier: '',
     oneShotDefaults: { ...EMPTY_ONE_SHOT_DEFAULTS },
   }
   const [homeStatus, setHomeStatus] = useState<HomeStatusResponse>({
@@ -738,6 +739,7 @@ function App() {
         throw new Error(appMessages.unexpectedUpgradeTier)
       }
 
+      setHomeStatus((current) => ({ ...current, defaultTier: completion.currentTier }))
       setPaywall(null)
     } catch (checkoutError) {
       const message =
@@ -765,6 +767,11 @@ function App() {
         <div className="header-brand">
           <img alt="" aria-hidden="true" className="header-brand-icon" src={iconUrl} />
           <h1>{ui.appTitle}</h1>
+          {homeStatus.defaultTier ? (
+            <span className="tier-badge" data-testid="tier-badge">
+              {ui.tierBadge(homeStatus.defaultTier)}
+            </span>
+          ) : null}
         </div>
         <label className="toggle">
           <input

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - .NET 10 SDK
-- Node.js 18+
+- Node.js 22+
 - npm
 - GNU Make
 
@@ -30,7 +30,20 @@ npm run dev
 make lint
 make build
 make test
+make test-coverage
+cd src/frontend && npm run test:unit -- --coverage
 ```
+
+`make test` now includes frontend browser E2E (`npm run test:browser-e2e`).
+
+## Browser E2E (Playwright, direct)
+```bash
+cd src/frontend
+npx playwright install chromium
+npm run test:browser-e2e
+```
+
+`test:browser-e2e` builds the frontend and runs Playwright against `vite preview` (production bundle), not the dev server.
 
 ## Docker (API)
 ```bash

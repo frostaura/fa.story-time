@@ -186,11 +186,15 @@ internal static class StoryTimeOptionsFactory
             AiOrchestration = new AiOrchestrationOptions
             {
                 Enabled = true,
-                LocalFallbackEnabled = true,
-                Endpoint = BuildProviderEndpoint("/storytime/ai"),
+                LocalFallbackEnabled = false,
+                EnforceOpenRouterEndpoint = true,
+                Endpoint = "https://openrouter.ai/api/v1/chat/completions",
                 ApiKey = "",
+                OpenRouterReferer = "https://storytime.local",
+                OpenRouterTitle = "StoryTime",
                 Model = "storytime-orchestrator",
                 TimeoutSeconds = 15,
+                StageResponseFormatInstruction = "Return only valid JSON with shape {\"text\": string|null, \"items\": string[]|null}. Do not include markdown fences.",
                 StageNames = new AiStageNameOptions
                 {
                     Outline = "outline",
@@ -207,6 +211,8 @@ internal static class StoryTimeOptionsFactory
                 ArcObjective = "Find tonight's calm ending in {ArcName}.",
                 ContinuityFact = "Episode {EpisodeNumber} generated at {Timestamp} with {SceneCount} scenes.",
                 EpisodeSummary = "A calm episode progressed through {SceneCount} bedtime scenes.",
+                PersistedArcObjective = "Find tonight's calm ending in {ArcName}.",
+                PersistedEpisodeSummary = "Episode {EpisodeNumber} completed.",
                 OneShotOutline = "{Protagonist} and {CompanionName} enjoy a {Mood} one-shot bedtime adventure across {SceneCount} scenes in {Setting} with {ThemeTrackId} underscoring and {NarrationStyle} narration.",
                 SeriesOutline = "{Protagonist} explores {ArcContext} through {SceneCount} bedtime scenes with calming progression.",
                 SeriesOutlineStandaloneArcContext = "a standalone dream",
@@ -250,6 +256,7 @@ internal static class StoryTimeOptionsFactory
             KidShelfRecentLimit = 8,
             KidShelfFavoritesLimit = 8,
             HashedIdentifierByteLength = 6,
+            AnonymousIdentifierFallback = "anonymous",
             NarrativeTextMinWords = 18,
             SemanticNarrativeTextMinWords = 8,
             NarrativeLeakageMarkers =
@@ -328,6 +335,7 @@ internal static class StoryTimeOptionsFactory
                 ["CheckoutDefaultTierMustBeConfigured"] = "StoryTime:Checkout:DefaultTier must be configured.",
                 ["CheckoutDefaultTierMustMatchTierLimits"] = "StoryTime:Checkout:DefaultTier '{Tier}' must match one of the configured StoryTime:TierLimits keys.",
                 ["AiOrchestrationEndpointRequiredWhenEnabled"] = "StoryTime:Generation:AiOrchestration:Endpoint must be configured when enabled.",
+                ["AiOrchestrationEndpointMustTargetOpenRouter"] = "StoryTime:Generation:AiOrchestration:Endpoint must target openrouter.ai.",
                 ["AiOrchestrationStageFailedWithStatus"] = "AI orchestration stage '{Stage}' failed with status {StatusCode}.",
                 ["AiOrchestrationStageReturnedEmptyResponse"] = "AI orchestration stage '{Stage}' returned an empty response.",
                 ["PersistentRecurringCharacterAliasMustBeConfigured"] = "Persistent recurring character alias must be configured."

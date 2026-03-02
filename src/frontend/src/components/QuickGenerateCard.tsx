@@ -43,13 +43,13 @@ type QuickGenerateCardProps = {
   onGenerate: () => void
 }
 
-const ONESHOT_PLACEHOLDER_FALLBACKS: Record<keyof OneShotCustomization, string> = {
-  arcName: 'A journey to find a lost star',
-  companionName: 'A friendly dragon named Spark',
-  setting: 'An enchanted forest',
-  mood: 'Peaceful and wonder-filled',
-  themeTrackId: 'Gentle lullaby',
-  narrationStyle: 'Warm and soothing',
+const ONESHOT_PLACEHOLDER_KEYS: Record<keyof OneShotCustomization, keyof UiMessages> = {
+  arcName: 'oneShotPlaceholderArcName',
+  companionName: 'oneShotPlaceholderCompanionName',
+  setting: 'oneShotPlaceholderSetting',
+  mood: 'oneShotPlaceholderMood',
+  themeTrackId: 'oneShotPlaceholderThemeTrackId',
+  narrationStyle: 'oneShotPlaceholderNarrationStyle',
 }
 
 export function QuickGenerateCard({
@@ -77,7 +77,7 @@ export function QuickGenerateCard({
     if (typeof backend === 'string' && backend.length > 0) {
       return backend
     }
-    return ONESHOT_PLACEHOLDER_FALLBACKS[key]
+    return ui[ONESHOT_PLACEHOLDER_KEYS[key]] as string
   }
 
   return (

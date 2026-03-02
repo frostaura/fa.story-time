@@ -37,6 +37,25 @@ const toOptionalRoutePath = (value: unknown): string | null => {
   return path.startsWith('/') ? path : `/${path}`
 }
 
+const toOptionalRoutePathList = (value: unknown): string[] | null => {
+  const raw = toOptionalString(value)
+  if (raw === null) {
+    return null
+  }
+
+  const normalized = raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((entry) => (entry.startsWith('/') ? entry : `/${entry}`))
+
+  if (normalized.length === 0) {
+    return null
+  }
+
+  return [...new Set(normalized)]
+}
+
 const toOptionalPositiveInt = (value: unknown): number | null => {
   const parsed = toOptionalNumber(value)
   if (parsed === null || parsed <= 0) {
@@ -140,6 +159,9 @@ const requireString = (value: unknown, key: string): string =>
 const requireRoutePath = (value: unknown, key: string): string =>
   toOptionalRoutePath(value) ?? throwMissingRuntimeConfig(key)
 
+const requireRoutePathList = (value: unknown, key: string): readonly string[] =>
+  toOptionalRoutePathList(value) ?? throwMissingRuntimeConfig(key)
+
 const requireNumber = (value: unknown, key: string): number =>
   toOptionalNumber(value) ?? throwMissingRuntimeConfig(key)
 
@@ -192,6 +214,18 @@ const subscriptionBaseRoute = requireRoutePath(
 )
 const parentBaseRoute = requireRoutePath(import.meta.env.VITE_API_ROUTE_PARENT_BASE, 'VITE_API_ROUTE_PARENT_BASE')
 const libraryBaseRoute = requireRoutePath(import.meta.env.VITE_API_ROUTE_LIBRARY_BASE, 'VITE_API_ROUTE_LIBRARY_BASE')
+const configuredWebAuthnUserIdMaxLength = requirePositiveInt(
+  import.meta.env.VITE_PARENT_GATE_WEBAUTHN_USER_ID_MAX_LENGTH,
+  'VITE_PARENT_GATE_WEBAUTHN_USER_ID_MAX_LENGTH',
+)
+const configuredWebAuthnUserIdProtocolMaxLength = requirePositiveInt(
+  import.meta.env.VITE_PARENT_GATE_WEBAUTHN_USER_ID_PROTOCOL_MAX_LENGTH,
+  'VITE_PARENT_GATE_WEBAUTHN_USER_ID_PROTOCOL_MAX_LENGTH',
+)
+
+if (configuredWebAuthnUserIdMaxLength > configuredWebAuthnUserIdProtocolMaxLength) {
+  throwMissingRuntimeConfig('VITE_PARENT_GATE_WEBAUTHN_USER_ID_MAX_LENGTH')
+}
 
 export const runtimeConfig = Object.freeze({
   apiRoutes: Object.freeze({
@@ -237,6 +271,14 @@ export const runtimeConfig = Object.freeze({
     analyticsEnabled: requireBoolean(import.meta.env.VITE_DEFAULT_ANALYTICS_ENABLED, 'VITE_DEFAULT_ANALYTICS_ENABLED'),
   }),
   serviceWorkerPath: requireString(import.meta.env.VITE_SERVICE_WORKER_PATH, 'VITE_SERVICE_WORKER_PATH'),
+  serviceWorkerCacheName: requireString(
+    import.meta.env.VITE_SERVICE_WORKER_CACHE_NAME,
+    'VITE_SERVICE_WORKER_CACHE_NAME',
+  ),
+  serviceWorkerAppShell: requireRoutePathList(
+    import.meta.env.VITE_SERVICE_WORKER_APP_SHELL,
+    'VITE_SERVICE_WORKER_APP_SHELL',
+  ),
   libraryRecentLimit: requireNumber(import.meta.env.VITE_LIBRARY_RECENT_LIMIT, 'VITE_LIBRARY_RECENT_LIMIT'),
   storageKeys: Object.freeze({
     storyArtifacts: requireString(
@@ -266,6 +308,7 @@ export const runtimeConfig = Object.freeze({
       import.meta.env.VITE_PARENT_GATE_WEBAUTHN_TIMEOUT_MS,
       'VITE_PARENT_GATE_WEBAUTHN_TIMEOUT_MS',
     ),
+    userIdMaxLength: configuredWebAuthnUserIdMaxLength,
     userNamePrefix: requireString(
       import.meta.env.VITE_PARENT_GATE_WEBAUTHN_USER_NAME_PREFIX,
       'VITE_PARENT_GATE_WEBAUTHN_USER_NAME_PREFIX',

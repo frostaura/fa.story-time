@@ -35,7 +35,13 @@ public sealed class StoryGenerationService(
             NormalizePersistentRecurringCharacter(
                 options.Value.Generation.Fallbacks.PersistentRecurringCharacterAlias,
                 options.Value.Ui.DefaultChildName,
-                options.Value.Messages));
+                options.Value.Messages),
+            options.Value.Generation.NarrativeTemplates.PersistedArcObjective,
+            options.Value.Generation.NarrativeTemplates.PersistedEpisodeSummary);
+    private static readonly JsonSerializerOptions OpenRouterStageResponseSerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     public async Task<GeneratedStory> GenerateAsync(GenerateStoryRequest request, CancellationToken cancellationToken)
     {
@@ -144,7 +150,7 @@ public sealed class StoryGenerationService(
         return new StoryBible
         {
             SeriesId = seriesId,
-            VisualIdentity = $"palette-{seriesId[..6]}",
+            VisualIdentity = $"{_options.Generation.PalettePrefix}{seriesId[..6]}",
             RecurringCharacter = protagonist,
             ArcName = arcName,
             ArcEpisodeNumber = 0,
@@ -571,67 +577,117 @@ public sealed class StoryGenerationService(
         var endpoint = aiOptions.Endpoint;
         if (string.IsNullOrWhiteSpace(endpoint))
         {
-            return aiOptions.LocalFallbackEnabled
-                ? null
-                : throw new InvalidOperationException(_messages.Internal("AiOrchestrationEndpointRequiredWhenEnabled"));
+            throw new InvalidOperationException(_messages.Internal("AiOrchestrationEndpointRequiredWhenEnabled"));
+        }
+
+        if (!IsOpenRouterEndpoint(endpoint))
+        {
+            throw new InvalidOperationException(_messages.Internal("AiOrchestrationEndpointMustTargetOpenRouter"));
         }
 
         var client = _httpClientFactory.CreateClient(nameof(StoryGenerationService));
         client.Timeout = TimeSpan.FromSeconds(Math.Max(1, aiOptions.TimeoutSeconds));
 
+        var requestPayload = JsonContent.Create(
+            BuildOpenRouterRequest(stage, aiOptions.Model, payload, aiOptions.StageResponseFormatInstruction));
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = requestPayload
+        };
+
+        var apiKey = aiOptions.ApiKey;
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        }
+
+        request.Headers.TryAddWithoutValidation("HTTP-Referer", aiOptions.OpenRouterReferer);
+        request.Headers.TryAddWithoutValidation("X-Title", aiOptions.OpenRouterTitle);
+
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                _messages.Internal(
+                    "AiOrchestrationStageFailedWithStatus",
+                    ("Stage", stage),
+                    ("StatusCode", ((int)response.StatusCode).ToString())));
+        }
+
+        var aiResponse = ParseOpenRouterStageResponse(
+            await response.Content.ReadFromJsonAsync<OpenRouterChatCompletionResponse>(cancellationToken: cancellationToken));
+        if (aiResponse is null)
+        {
+            throw new InvalidOperationException(
+                _messages.Internal(
+                    "AiOrchestrationStageReturnedEmptyResponse",
+                    ("Stage", stage)));
+        }
+
+        return aiResponse;
+    }
+
+    private static OpenRouterChatCompletionRequest BuildOpenRouterRequest(
+        string stage,
+        string model,
+        IReadOnlyDictionary<string, object?> payload,
+        string stageResponseFormatInstruction)
+    {
+        var userPayload = JsonSerializer.Serialize(new
+        {
+            stage,
+            payload
+        });
+
+        return new OpenRouterChatCompletionRequest(
+            model,
+            [
+                new OpenRouterChatMessage("system", stageResponseFormatInstruction),
+                new OpenRouterChatMessage("user", userPayload)
+            ]);
+    }
+
+    private static AiStageResponse? ParseOpenRouterStageResponse(OpenRouterChatCompletionResponse? completion)
+    {
+        var rawContent = completion?.Choices?.FirstOrDefault()?.Message?.Content;
+        if (string.IsNullOrWhiteSpace(rawContent))
+        {
+            return null;
+        }
+
+        var content = NormalizeOpenRouterContent(rawContent);
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            var parsed = JsonSerializer.Deserialize<AiStageResponse>(content, OpenRouterStageResponseSerializerOptions);
+            if (parsed is not null && (parsed.Items is { Count: > 0 } || !string.IsNullOrWhiteSpace(parsed.Text)))
             {
-                Content = JsonContent.Create(new AiStageRequest(stage, aiOptions.Model, payload))
-            };
-
-            var apiKey = aiOptions.ApiKey;
-            if (!string.IsNullOrWhiteSpace(apiKey))
-            {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                return parsed;
             }
-
-            using var response = await client.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                if (aiOptions.LocalFallbackEnabled)
-                {
-                    return null;
-                }
-
-                throw new InvalidOperationException(
-                    _messages.Internal(
-                        "AiOrchestrationStageFailedWithStatus",
-                        ("Stage", stage),
-                        ("StatusCode", ((int)response.StatusCode).ToString())));
-            }
-
-            var aiResponse = await response.Content.ReadFromJsonAsync<AiStageResponse>(cancellationToken: cancellationToken);
-            if (aiResponse is null)
-            {
-                return aiOptions.LocalFallbackEnabled
-                    ? null
-                    : throw new InvalidOperationException(
-                        _messages.Internal(
-                            "AiOrchestrationStageReturnedEmptyResponse",
-                            ("Stage", stage)));
-            }
-
-            return aiResponse;
         }
-        catch (HttpRequestException) when (aiOptions.LocalFallbackEnabled)
+        catch (JsonException)
         {
-            return null;
+            // Response content is allowed to be plain text when a provider cannot produce structured JSON.
         }
-        catch (TaskCanceledException) when (aiOptions.LocalFallbackEnabled)
+
+        return new AiStageResponse(content, null);
+    }
+
+    private static string NormalizeOpenRouterContent(string content)
+    {
+        var normalized = content.Trim();
+        if (!normalized.StartsWith("```", StringComparison.Ordinal))
         {
-            return null;
+            return normalized;
         }
-        catch (JsonException) when (aiOptions.LocalFallbackEnabled)
+
+        var firstNewLine = normalized.IndexOf('\n');
+        var lastFence = normalized.LastIndexOf("```", StringComparison.Ordinal);
+        if (firstNewLine < 0 || lastFence <= firstNewLine)
         {
-            return null;
+            return normalized;
         }
+
+        return normalized[(firstNewLine + 1)..lastFence].Trim();
     }
 
     private static string[] NormalizeAiItems(AiStageResponse? response)
@@ -668,9 +724,35 @@ public sealed class StoryGenerationService(
         public static OneShotCustomization Empty { get; } = new(null, null, null, null, null, null);
     }
 
-    private sealed record AiStageRequest(string Stage, string Model, IReadOnlyDictionary<string, object?> Payload);
-
     private sealed record AiStageResponse(string? Text, IReadOnlyList<string>? Items);
+
+    private sealed record OpenRouterChatCompletionRequest(
+        [property: JsonPropertyName("model")] string Model,
+        [property: JsonPropertyName("messages")] IReadOnlyList<OpenRouterChatMessage> Messages);
+
+    private sealed record OpenRouterChatMessage(
+        [property: JsonPropertyName("role")] string Role,
+        [property: JsonPropertyName("content")] string Content);
+
+    private sealed record OpenRouterChatCompletionResponse(
+        [property: JsonPropertyName("choices")] IReadOnlyList<OpenRouterChoice>? Choices);
+
+    private sealed record OpenRouterChoice(
+        [property: JsonPropertyName("message")] OpenRouterChoiceMessage? Message);
+
+    private sealed record OpenRouterChoiceMessage(
+        [property: JsonPropertyName("content")] string? Content);
+
+    private static bool IsOpenRouterEndpoint(string endpoint)
+    {
+        if (!Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var uri) || string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return false;
+        }
+
+        return string.Equals(uri.Host, "openrouter.ai", StringComparison.OrdinalIgnoreCase) ||
+               uri.Host.EndsWith(".openrouter.ai", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static string ApplyTemplate(string template, IReadOnlyDictionary<string, string> values)
     {
@@ -726,8 +808,10 @@ public sealed class StoryGenerationService(
                     _persistedRecurringCharacterAlias,
                     bible.ArcName,
                     bible.ArcEpisodeNumber,
-                    bible.ArcObjective,
-                    bible.LastEpisodeSummary,
+                    BuildPersistedArcObjective(bible.ArcName, _options.Generation.NarrativeTemplates.PersistedArcObjective),
+                    BuildPersistedEpisodeSummary(
+                        bible.ArcEpisodeNumber,
+                        _options.Generation.NarrativeTemplates.PersistedEpisodeSummary),
                     _persistContinuityFacts ? [.. bible.ContinuityFacts] : null,
                     bible.AudioAnchorMetadata))
                 .ToArray();
@@ -749,7 +833,9 @@ public sealed class StoryGenerationService(
         bool persistEnabled,
         string configuredPath,
         bool persistContinuityFacts,
-        string recurringCharacterFallback)
+        string recurringCharacterFallback,
+        string persistedArcObjectiveTemplate,
+        string persistedEpisodeSummaryTemplate)
     {
         var bibles = new ConcurrentDictionary<string, StoryBible>(StringComparer.Ordinal);
         if (!persistEnabled)
@@ -786,8 +872,8 @@ public sealed class StoryGenerationService(
                     : item.RecurringCharacter,
                 ArcName = item.ArcName,
                 ArcEpisodeNumber = item.ArcEpisodeNumber,
-                ArcObjective = string.IsNullOrWhiteSpace(item.ArcObjective) ? item.ArcName : item.ArcObjective,
-                LastEpisodeSummary = item.LastEpisodeSummary ?? "",
+                ArcObjective = BuildPersistedArcObjective(item.ArcName, persistedArcObjectiveTemplate),
+                LastEpisodeSummary = BuildPersistedEpisodeSummary(item.ArcEpisodeNumber, persistedEpisodeSummaryTemplate),
                 AudioAnchorMetadata = item.AudioAnchorMetadata
             };
             if (persistContinuityFacts && item.ContinuityFacts is { Count: > 0 })
@@ -809,6 +895,36 @@ public sealed class StoryGenerationService(
         }
 
         return Path.Combine(AppContext.BaseDirectory, configuredPath);
+    }
+
+    private static string BuildPersistedArcObjective(string arcName, string template)
+    {
+        var normalizedArcName = string.IsNullOrWhiteSpace(arcName)
+            ? "current arc"
+            : arcName.Trim();
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            return string.Empty;
+        }
+
+        return ApplyTemplate(
+            template,
+            new Dictionary<string, string>
+            {
+                ["ArcName"] = normalizedArcName
+            });
+    }
+
+    private static string BuildPersistedEpisodeSummary(int arcEpisodeNumber, string template)
+    {
+        return arcEpisodeNumber <= 0 || string.IsNullOrWhiteSpace(template)
+            ? string.Empty
+            : ApplyTemplate(
+                template,
+                new Dictionary<string, string>
+                {
+                    ["EpisodeNumber"] = arcEpisodeNumber.ToString()
+                });
     }
 
     private sealed record PersistedStoryBible(

@@ -22,6 +22,12 @@ exports[`App visual regression > matches generated story baseline 1`] = `
         <h1>
           StoryTime
         </h1>
+        <span
+          class="tier-badge"
+          data-testid="tier-badge"
+        >
+          Trial
+        </span>
       </div>
       <label
         class="toggle"
@@ -244,6 +250,12 @@ exports[`App visual regression > matches generated story baseline 1`] = `
               <strong>
                 Ari and the Moonlit Meadow
               </strong>
+              <span
+                class="series-progress"
+                data-testid="recent-story-series-progress-story-visual-1"
+              >
+                Moonlit Meadow · Episode 1
+              </span>
               <small>
                 Previously: calm winds.
               </small>
@@ -328,6 +340,12 @@ exports[`App visual regression > matches quick generate baseline 1`] = `
         <h1>
           StoryTime
         </h1>
+        <span
+          class="tier-badge"
+          data-testid="tier-badge"
+        >
+          Trial
+        </span>
       </div>
       <label
         class="toggle"
@@ -582,6 +600,12 @@ exports[`App visual regression > matches reduced-motion generated baseline 1`] =
         <h1>
           StoryTime
         </h1>
+        <span
+          class="tier-badge"
+          data-testid="tier-badge"
+        >
+          Trial
+        </span>
       </div>
       <label
         class="toggle"
@@ -804,6 +828,12 @@ exports[`App visual regression > matches reduced-motion generated baseline 1`] =
               <strong>
                 Ari and the Moonlit Meadow
               </strong>
+              <span
+                class="series-progress"
+                data-testid="recent-story-series-progress-story-visual-1"
+              >
+                Moonlit Meadow · Episode 1
+              </span>
               <small>
                 Previously: calm winds.
               </small>

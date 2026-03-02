@@ -7,7 +7,7 @@ public sealed class IdentifierHashingTests
     [Fact]
     public void HashIdentifier_ReturnsAnonymousForMissingIdentifier()
     {
-        var hash = IdentifierHashing.HashIdentifier(" ", 8);
+        var hash = IdentifierHashing.HashIdentifier(" ", 8, "anonymous");
 
         Assert.Equal("anonymous", hash);
     }
@@ -17,8 +17,8 @@ public sealed class IdentifierHashingTests
     {
         const string rawIdentifier = "parent-sensitive-user-123";
 
-        var first = IdentifierHashing.HashIdentifier(rawIdentifier, 6);
-        var second = IdentifierHashing.HashIdentifier(rawIdentifier, 6);
+        var first = IdentifierHashing.HashIdentifier(rawIdentifier, 6, "anonymous");
+        var second = IdentifierHashing.HashIdentifier(rawIdentifier, 6, "anonymous");
 
         Assert.Equal(first, second);
         Assert.Equal(12, first.Length);

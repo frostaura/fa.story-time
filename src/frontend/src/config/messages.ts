@@ -159,6 +159,20 @@ export const appMessages = Object.freeze({
     upgrading: resolveUiMessage('upgrading'),
     confirmUpgrade: (tier: string) =>
       withToken(resolveUiMessage('confirmUpgradeTemplate'), '{tier}', tier),
+    tierBadge: (tier: string) =>
+      withToken(resolveUiMessage('tierBadgeTemplate'), '{tier}', tier),
+    seriesProgress: (arcName: string, episode: number) =>
+      withToken(
+        withToken(resolveUiMessage('seriesProgressTemplate'), '{arcName}', arcName),
+        '{episode}',
+        `${episode}`,
+      ),
+    oneShotPlaceholderArcName: resolveUiMessage('oneShotPlaceholderArcName'),
+    oneShotPlaceholderCompanionName: resolveUiMessage('oneShotPlaceholderCompanionName'),
+    oneShotPlaceholderSetting: resolveUiMessage('oneShotPlaceholderSetting'),
+    oneShotPlaceholderMood: resolveUiMessage('oneShotPlaceholderMood'),
+    oneShotPlaceholderThemeTrackId: resolveUiMessage('oneShotPlaceholderThemeTrackId'),
+    oneShotPlaceholderNarrationStyle: resolveUiMessage('oneShotPlaceholderNarrationStyle'),
     recent: resolveUiMessage('recent'),
     recentStoriesAria: resolveUiMessage('recentStoriesAria'),
     noStoriesGeneratedYet: resolveUiMessage('noStoriesGeneratedYet'),

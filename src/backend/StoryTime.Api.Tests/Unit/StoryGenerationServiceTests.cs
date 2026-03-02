@@ -5,6 +5,7 @@ using StoryTime.Api.Services;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 
 namespace StoryTime.Api.Tests.Unit;
 
@@ -45,6 +46,8 @@ public sealed class StoryGenerationServiceTests
             options.Generation.PersistContinuityFacts = true;
             options.Generation.StoryBibleFilePath = storyBiblePath;
             options.Generation.Fallbacks.PersistentRecurringCharacterAlias = "Stella";
+            options.Generation.NarrativeTemplates.PersistedArcObjective = "PersistedArc::{ArcName}";
+            options.Generation.NarrativeTemplates.PersistedEpisodeSummary = "PersistedEpisode::{EpisodeNumber}";
 
             var firstService = CreateService(options);
             var first = await firstService.GenerateAsync(
@@ -64,8 +67,18 @@ public sealed class StoryGenerationServiceTests
             Assert.DoesNotContain("\"RecurringCharacter\":\"Mila\"", persisted, StringComparison.Ordinal);
             Assert.Contains("\"RecurringCharacter\":\"Stella\"", persisted, StringComparison.Ordinal);
             Assert.Contains("\"ContinuityFacts\":[", persisted, StringComparison.Ordinal);
-            Assert.Contains("\"LastEpisodeSummary\":", persisted, StringComparison.Ordinal);
-            Assert.Contains("\"ArcObjective\":", persisted, StringComparison.Ordinal);
+            Assert.NotNull(continuation.StoryBible);
+            Assert.DoesNotContain(continuation.StoryBible!.ArcObjective, persisted, StringComparison.Ordinal);
+            Assert.DoesNotContain(continuation.StoryBible.PreviousEpisodeSummary, persisted, StringComparison.Ordinal);
+
+            using var persistedDocument = JsonDocument.Parse(persisted);
+            var persistedEntry = persistedDocument.RootElement[0];
+            var persistedArcName = persistedEntry.GetProperty("ArcName").GetString() ?? string.Empty;
+            Assert.False(string.IsNullOrWhiteSpace(persistedArcName));
+            Assert.Equal(
+                options.Generation.NarrativeTemplates.PersistedArcObjective.Replace("{ArcName}", persistedArcName, StringComparison.Ordinal),
+                persistedEntry.GetProperty("ArcObjective").GetString());
+            Assert.Equal("PersistedEpisode::2", persistedEntry.GetProperty("LastEpisodeSummary").GetString());
         }
         finally
         {
@@ -123,20 +136,15 @@ public sealed class StoryGenerationServiceTests
         options.Generation.ForceProceduralPosterFallback = true;
         var service = CreateService(options);
 
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
         var generated = await service.GenerateAsync(
             new GenerateStoryRequest("user-fallback", "Noa", "one-shot", 5, null, null, false, ReducedMotion: true),
             CancellationToken.None);
-
-        stopwatch.Stop();
 
         Assert.InRange(generated.PosterLayers.Count, 3, 5);
         Assert.Equal(["BACKGROUND", "MIDGROUND_1", "FOREGROUND", "PARTICLES"], generated.PosterLayers.Select(layer => layer.Role).ToArray());
         Assert.All(generated.PosterLayers, layer => Assert.StartsWith("data:image/svg+xml;base64,", layer.DataUri));
         Assert.All(generated.PosterLayers, layer => Assert.Equal(0, layer.SpeedMultiplier));
         Assert.True(generated.ReducedMotion);
-        Assert.True(stopwatch.ElapsedMilliseconds < 200, $"Fallback exceeded budget with {stopwatch.ElapsedMilliseconds}ms.");
     }
 
     [Fact]
@@ -198,7 +206,9 @@ public sealed class StoryGenerationServiceTests
     [Fact]
     public async Task GenerateAsync_UsesExternalPosterAndNarrationProviders_WhenAvailable()
     {
-        var service = CreateService(httpClientFactory: new TestHttpClientFactory(new ProviderSuccessHandler()));
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.Enabled = false;
+        var service = CreateService(options, new TestHttpClientFactory(new ProviderSuccessHandler()));
 
         var generated = await service.GenerateAsync(
             new GenerateStoryRequest("user-external-media", "Noa", "one-shot", 5, null, false, false),
@@ -207,6 +217,93 @@ public sealed class StoryGenerationServiceTests
         Assert.All(generated.PosterLayers, layer => Assert.StartsWith("data:image/png;base64,", layer.DataUri));
         Assert.Equal("data:audio/wav;base64,VEVTVA==", generated.TeaserAudio);
         Assert.Equal("data:audio/wav;base64,VEVTVA==", generated.FullAudio);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_UsesOpenRouterContract_WhenEndpointTargetsOpenRouter()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.EnforceOpenRouterEndpoint = true;
+        options.Generation.AiOrchestration.LocalFallbackEnabled = false;
+        options.Generation.AiOrchestration.Endpoint = "https://openrouter.ai/api/v1/chat/completions";
+        options.Generation.AiOrchestration.ApiKey = "openrouter-test-key";
+        var handler = new OpenRouterContractHandler();
+        var service = CreateService(options, new TestHttpClientFactory(handler));
+
+        var generated = await service.GenerateAsync(
+            new GenerateStoryRequest("user-openrouter", "Noa", "one-shot", 5, null, false, false),
+            CancellationToken.None);
+
+        Assert.NotEmpty(handler.OpenRouterRequests);
+        var firstRequest = handler.OpenRouterRequests[0];
+        Assert.Equal("Bearer", firstRequest.AuthorizationScheme);
+        Assert.Equal("openrouter-test-key", firstRequest.AuthorizationParameter);
+        Assert.Equal(options.Generation.AiOrchestration.OpenRouterReferer, firstRequest.HttpReferer);
+        Assert.Equal(options.Generation.AiOrchestration.OpenRouterTitle, firstRequest.XTitle);
+
+        using var payload = JsonDocument.Parse(firstRequest.Body);
+        Assert.Equal("storytime-orchestrator", payload.RootElement.GetProperty("model").GetString());
+        var messages = payload.RootElement.GetProperty("messages");
+        Assert.True(messages.GetArrayLength() >= 2);
+        Assert.Equal("system", messages[0].GetProperty("role").GetString());
+        Assert.Equal(
+            options.Generation.AiOrchestration.StageResponseFormatInstruction,
+            messages[0].GetProperty("content").GetString());
+        Assert.Contains("\"stage\":\"outline\"", messages[1].GetProperty("content").GetString(), StringComparison.Ordinal);
+        Assert.Contains(generated.Scenes, scene => scene.Contains("AI polish", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ThrowsConfiguredError_WhenAiEndpointIsNotOpenRouter()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.Enabled = true;
+        options.Generation.AiOrchestration.Endpoint = "https://provider.storytime.test/storytime/ai";
+        var service = CreateService(options, new TestHttpClientFactory(new OpenRouterContractHandler()));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.GenerateAsync(
+                new GenerateStoryRequest("user-openrouter-invalid-endpoint", "Noa", "one-shot", 5, null, false, false),
+                CancellationToken.None));
+
+        Assert.Equal(
+            options.Messages.Internal("AiOrchestrationEndpointMustTargetOpenRouter"),
+            exception.Message);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ThrowsExplicitAiStageError_WhenOpenRouterFails()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.Enabled = true;
+        options.Generation.AiOrchestration.LocalFallbackEnabled = false;
+        options.Generation.AiOrchestration.Endpoint = "https://openrouter.ai/api/v1/chat/completions";
+        options.Generation.AiOrchestration.ApiKey = "openrouter-test-key";
+        var service = CreateService(options, new TestHttpClientFactory(new OpenRouterFailureHandler()));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.GenerateAsync(
+                new GenerateStoryRequest("user-ai-failure", "Noa", "one-shot", 5, null, false, false),
+                CancellationToken.None));
+
+        Assert.Contains("outline", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("503", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ThrowsExplicitPosterProviderError_WhenFallbackIsDisabled()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.Enabled = false;
+        options.Generation.PosterModelProvider.LocalFallbackEnabled = false;
+        var service = CreateService(options, new TestHttpClientFactory(new PosterProviderFailureHandler()));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.GenerateAsync(
+                new GenerateStoryRequest("user-poster-failure", "Noa", "one-shot", 5, null, false, false),
+                CancellationToken.None));
+
+        Assert.Contains("PosterModelProvider failed with status 502", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -310,11 +407,32 @@ public sealed class StoryGenerationServiceTests
         Assert.Contains("ProceduralPosterFallbackBudgetMilliseconds", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task GenerateAsync_ThrowsWhenProceduralPosterFallbackExceedsConfiguredBudget()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.ForceProceduralPosterFallback = true;
+        options.Generation.ProceduralPosterFallbackBudgetMilliseconds = 1;
+        options.Generation.ProceduralPoster.FallbackStarCount = 5000;
+        var service = CreateService(options);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.GenerateAsync(
+                new GenerateStoryRequest("user-exceeded-budget", "Noa", "one-shot", 5, null, null, false),
+                CancellationToken.None));
+
+        Assert.Contains("exceeded budget", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static StoryGenerationService CreateService(
         StoryTimeOptions? options = null,
         IHttpClientFactory? httpClientFactory = null)
     {
         var resolvedOptions = options ?? StoryTimeOptionsFactory.Create();
+        if (httpClientFactory is null)
+        {
+            resolvedOptions.Generation.AiOrchestration.Enabled = false;
+        }
         var optionsWrapper = Options.Create(resolvedOptions);
         var resolvedHttpClientFactory = httpClientFactory ?? new TestHttpClientFactory();
         var mediaAssetService = new ProceduralMediaAssetService(
@@ -365,4 +483,115 @@ public sealed class StoryGenerationServiceTests
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
         }
     }
+
+    private sealed class OpenRouterContractHandler : HttpMessageHandler
+    {
+        public List<OpenRouterRequestLog> OpenRouterRequests { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            var host = request.RequestUri?.Host ?? string.Empty;
+
+            if (string.Equals(host, "openrouter.ai", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = request.Content is null
+                    ? string.Empty
+                    : await request.Content.ReadAsStringAsync(cancellationToken);
+
+                OpenRouterRequests.Add(
+                    new OpenRouterRequestLog(
+                        Body: body,
+                        AuthorizationScheme: request.Headers.Authorization?.Scheme,
+                        AuthorizationParameter: request.Headers.Authorization?.Parameter,
+                        HttpReferer: request.Headers.TryGetValues("HTTP-Referer", out var referers)
+                            ? referers.FirstOrDefault()
+                            : null,
+                        XTitle: request.Headers.TryGetValues("X-Title", out var titles)
+                            ? titles.FirstOrDefault()
+                            : null));
+
+                object stageResponse = body.Contains("\"stage\":\"outline\"", StringComparison.Ordinal)
+                    ? new { text = "AI outline" }
+                    : new { items = new[] { "AI polish scene one", "AI polish scene two" } };
+                var completionPayload = JsonSerializer.Serialize(new
+                {
+                    choices = new[]
+                    {
+                        new
+                        {
+                            message = new
+                            {
+                                content = JsonSerializer.Serialize(stageResponse)
+                            }
+                        }
+                    }
+                });
+
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(completionPayload, Encoding.UTF8, "application/json")
+                };
+            }
+
+            if (path.EndsWith("/storytime/poster", StringComparison.Ordinal))
+            {
+                const string posterPayload = """
+{"layers":[{"role":"BACKGROUND","dataUri":"data:image/png;base64,AAA="},{"role":"MIDGROUND_1","dataUri":"data:image/png;base64,BBB="},{"role":"FOREGROUND","dataUri":"data:image/png;base64,CCC="},{"role":"PARTICLES","dataUri":"data:image/png;base64,DDD="}]}
+""";
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(posterPayload, Encoding.UTF8, "application/json")
+                };
+            }
+
+            if (path.EndsWith("/storytime/narration", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        """{"dataUri":"data:audio/wav;base64,VEVTVA=="}""",
+                        Encoding.UTF8,
+                        "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+        }
+    }
+
+    private sealed class OpenRouterFailureHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var host = request.RequestUri?.Host ?? string.Empty;
+            if (string.Equals(host, "openrouter.ai", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        }
+    }
+
+    private sealed class PosterProviderFailureHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (path.EndsWith("/storytime/poster", StringComparison.Ordinal))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadGateway));
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        }
+    }
+
+    private sealed record OpenRouterRequestLog(
+        string Body,
+        string? AuthorizationScheme,
+        string? AuthorizationParameter,
+        string? HttpReferer,
+        string? XTitle);
 }

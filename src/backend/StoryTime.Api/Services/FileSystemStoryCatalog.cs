@@ -10,10 +10,11 @@ public sealed class FileSystemStoryCatalog(IOptions<StoryTimeOptions> options, I
     private readonly IMediaAssetService _mediaAssetService = mediaAssetService;
     private readonly object _syncRoot = new();
     private readonly string _filePath = ResolveFilePath(options.Value.Catalog.FilePath);
-    private readonly Dictionary<string, List<StoryLibraryItem>> _storiesByUser = LoadCatalog(options.Value.Catalog.FilePath);
+    private readonly Dictionary<string, List<StoryLibraryItem>> _storiesByUser = LoadCatalog(ResolveFilePath(options.Value.Catalog.FilePath));
 
     public void Add(string softUserId, StoryLibraryItem item)
     {
+        Dictionary<string, List<StoryLibraryItem>> snapshot;
         lock (_syncRoot)
         {
             if (!_storiesByUser.TryGetValue(softUserId, out var stories))
@@ -23,12 +24,16 @@ public sealed class FileSystemStoryCatalog(IOptions<StoryTimeOptions> options, I
             }
 
             stories.Insert(0, Clone(item, stripAudioPayload: true));
-            PersistUnsafe();
+            snapshot = CreatePersistableSnapshotUnsafe();
         }
+
+        PersistSnapshot(snapshot);
     }
 
     public StoryLibraryItem? SetApproval(string storyId)
     {
+        Dictionary<string, List<StoryLibraryItem>>? snapshot = null;
+        StoryLibraryItem? approved = null;
         lock (_syncRoot)
         {
             foreach (var stories in _storiesByUser.Values)
@@ -40,22 +45,28 @@ public sealed class FileSystemStoryCatalog(IOptions<StoryTimeOptions> options, I
                 }
 
                 story.FullAudioReady = true;
-                PersistUnsafe();
-
-                var approved = Clone(story, stripAudioPayload: true);
+                approved = Clone(story, stripAudioPayload: true);
                 approved.FullAudio = _mediaAssetService.BuildAudioDataUri(
                     story.StoryId,
                     _options.Generation.FullDurationSeconds,
                     _options.Generation.FullAudioAmplitudeScale);
-                return approved;
+                snapshot = CreatePersistableSnapshotUnsafe();
+                break;
             }
         }
 
-        return null;
+        if (snapshot is null)
+        {
+            return null;
+        }
+
+        PersistSnapshot(snapshot);
+        return approved;
     }
 
     public bool SetFavorite(string storyId, bool isFavorite)
     {
+        Dictionary<string, List<StoryLibraryItem>>? snapshot = null;
         lock (_syncRoot)
         {
             foreach (var stories in _storiesByUser.Values)
@@ -67,12 +78,18 @@ public sealed class FileSystemStoryCatalog(IOptions<StoryTimeOptions> options, I
                 }
 
                 story.IsFavorite = isFavorite;
-                PersistUnsafe();
-                return true;
+                snapshot = CreatePersistableSnapshotUnsafe();
+                break;
             }
         }
 
-        return false;
+        if (snapshot is null)
+        {
+            return false;
+        }
+
+        PersistSnapshot(snapshot);
+        return true;
     }
 
     public IReadOnlyList<StoryLibraryItem> GetRecent(string softUserId)
@@ -122,15 +139,14 @@ public sealed class FileSystemStoryCatalog(IOptions<StoryTimeOptions> options, I
         }
     }
 
-    private static Dictionary<string, List<StoryLibraryItem>> LoadCatalog(string configuredPath)
+    private static Dictionary<string, List<StoryLibraryItem>> LoadCatalog(string path)
     {
-        var path = ResolveFilePath(configuredPath);
         if (!File.Exists(path))
         {
             return new Dictionary<string, List<StoryLibraryItem>>(StringComparer.Ordinal);
         }
 
-        var raw = File.ReadAllText(path);
+        var raw = File.ReadAllTextAsync(path).GetAwaiter().GetResult();
         if (string.IsNullOrWhiteSpace(raw))
         {
             return new Dictionary<string, List<StoryLibraryItem>>(StringComparer.Ordinal);
@@ -142,7 +158,15 @@ public sealed class FileSystemStoryCatalog(IOptions<StoryTimeOptions> options, I
             : new Dictionary<string, List<StoryLibraryItem>>(loaded, StringComparer.Ordinal);
     }
 
-    private void PersistUnsafe()
+    private Dictionary<string, List<StoryLibraryItem>> CreatePersistableSnapshotUnsafe()
+    {
+        return _storiesByUser.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.Select(item => Clone(item, stripAudioPayload: true)).ToList(),
+            StringComparer.Ordinal);
+    }
+
+    private void PersistSnapshot(Dictionary<string, List<StoryLibraryItem>> persisted)
     {
         var directory = Path.GetDirectoryName(_filePath);
         if (!string.IsNullOrWhiteSpace(directory))
@@ -150,12 +174,8 @@ public sealed class FileSystemStoryCatalog(IOptions<StoryTimeOptions> options, I
             Directory.CreateDirectory(directory);
         }
 
-        var persisted = _storiesByUser.ToDictionary(
-            pair => pair.Key,
-            pair => pair.Value.Select(item => Clone(item, stripAudioPayload: true)).ToList(),
-            StringComparer.Ordinal);
-
-        File.WriteAllText(_filePath, JsonSerializer.Serialize(persisted));
+        var serialized = JsonSerializer.Serialize(persisted);
+        File.WriteAllTextAsync(_filePath, serialized).GetAwaiter().GetResult();
     }
 
     private static string ResolveFilePath(string configuredPath)

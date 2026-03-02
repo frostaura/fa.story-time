@@ -70,6 +70,7 @@ app.MapGet(apiRoutes.HomeStatus, (IOptions<StoryTimeOptions> options) =>
         DurationDefaultMinutes: ui.DurationDefaultMinutes,
         DefaultChildName: ui.DefaultChildName,
         ParentControlsEnabled: ui.ParentControlsEnabled,
+        DefaultTier: options.Value.Checkout.DefaultTier,
         OneShotDefaults: new OneShotDefaultsResponse(
             ArcName: options.Value.Generation.Fallbacks.ArcName,
             CompanionName: options.Value.Generation.Fallbacks.OneShotCompanionName,
@@ -230,7 +231,10 @@ app.MapPost(apiRoutes.StoriesGenerate, async (
 
     logger.LogInformation(
         "Story generation requested for user {UserHash}. mode={Mode}, duration={Duration}, reducedMotion={ReducedMotion}",
-        IdentifierHashing.HashIdentifier(request.SoftUserId, optionsAccessor.Value.Catalog.HashedIdentifierByteLength),
+        IdentifierHashing.HashIdentifier(
+            request.SoftUserId,
+            optionsAccessor.Value.Catalog.HashedIdentifierByteLength,
+            optionsAccessor.Value.Catalog.AnonymousIdentifierFallback),
         request.Mode,
         request.DurationMinutes,
         request.ReducedMotion);

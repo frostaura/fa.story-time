@@ -1,6 +1,6 @@
 :root {
-  background: #f5f6fa;
-  color: #1d1d1f;
+  background: var(--color-bg, #f5f6fa);
+  color: var(--color-text-primary, #1d1d1f);
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
 }
