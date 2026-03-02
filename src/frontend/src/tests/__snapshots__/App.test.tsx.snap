@@ -1,0 +1,363 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`App > matches generated story visual baseline with poster layers 1`] = `
+<DocumentFragment>
+  <main
+    class="app-shell"
+  >
+    <header
+      class="header"
+    >
+      <h1>
+        StoryTime
+      </h1>
+      <label
+        class="toggle"
+      >
+        <input
+          aria-label="Kid Shelf"
+          type="checkbox"
+        />
+        Kid Shelf
+      </label>
+    </header>
+    <section
+      aria-label="Quick Generate"
+      class="quick-generate-card"
+    >
+      <h2>
+        Quick Generate
+      </h2>
+      <label
+        for="child-name"
+      >
+        Child name
+      </label>
+      <input
+        id="child-name"
+        name="childName"
+        placeholder="Dreamer"
+        type="text"
+        value="Dreamer"
+      />
+      <label
+        for="duration"
+      >
+        Duration (6 min)
+      </label>
+      <input
+        aria-label="Duration"
+        id="duration"
+        max="15"
+        min="5"
+        step="1"
+        type="range"
+        value="6"
+      />
+      <label
+        for="mode"
+      >
+        Mode
+      </label>
+      <select
+        id="mode"
+      >
+        <option
+          value="series"
+        >
+          Series
+        </option>
+        <option
+          value="one-shot"
+        >
+          One-shot
+        </option>
+      </select>
+      <label
+        class="toggle"
+      >
+        <input
+          aria-label="Reduced motion"
+          type="checkbox"
+        />
+        Reduced motion playback
+      </label>
+      <button
+        type="button"
+      >
+        Generate story
+      </button>
+    </section>
+    <section
+      aria-label="Parent controls"
+      class="shelf"
+    >
+      <h3>
+        Parent Controls
+      </h3>
+      <div
+        class="parent-controls-row"
+      >
+        <button
+          type="button"
+        >
+          Verify parent with passkey
+        </button>
+      </div>
+      <label
+        class="toggle"
+      >
+        <input
+          aria-label="Notifications enabled"
+          disabled=""
+          type="checkbox"
+        />
+        Notifications enabled
+      </label>
+      <label
+        class="toggle"
+      >
+        <input
+          aria-label="Analytics enabled"
+          disabled=""
+          type="checkbox"
+        />
+        Analytics enabled
+      </label>
+    </section>
+    <section
+      aria-label="Recent stories"
+      class="shelf"
+    >
+      <h3>
+        Recent
+      </h3>
+      <ul>
+        <li>
+          <div
+            class="story-layout"
+          >
+            <div
+              aria-label="Poster preview for Ari and the Moonlit Meadow"
+              class="poster-parallax"
+              role="img"
+            >
+              <div
+                class="poster-layer"
+                style="background-image: url("data:image/svg+xml;base64,PHN2Zy8+"); animation-duration: 120s; animation-delay: 0.06666666666666667s; transform: translate3d(0, 0, 1px);"
+              />
+              <div
+                class="poster-layer"
+                style="background-image: url("data:image/svg+xml;base64,PHN2Zy8+"); animation-duration: 24s; animation-delay: 0.3333333333333333s; transform: translate3d(0, 0, 4px);"
+              />
+              <div
+                class="poster-layer"
+                style="background-image: url("data:image/svg+xml;base64,PHN2Zy8+"); animation-duration: 18.46153846153846s; animation-delay: 0.43333333333333335s; transform: translate3d(0, 0, 5px);"
+              />
+            </div>
+            <div
+              class="story-summary"
+            >
+              <strong>
+                Ari and the Moonlit Meadow
+              </strong>
+              <small>
+                Previously: calm winds.
+              </small>
+              <div
+                class="audio-stack"
+              >
+                <audio
+                  aria-label="Teaser narration for Ari and the Moonlit Meadow"
+                  controls=""
+                  preload="none"
+                  src="data:audio/wav;base64,AAA="
+                />
+              </div>
+            </div>
+          </div>
+          <div
+            class="story-actions"
+          >
+            <button
+              type="button"
+            >
+              Approve full narration
+            </button>
+            <button
+              type="button"
+            >
+              Favorite
+            </button>
+          </div>
+        </li>
+      </ul>
+    </section>
+    <section
+      aria-label="Favorite stories"
+      class="shelf"
+    >
+      <h3>
+        Favorites
+      </h3>
+      <p>
+        No favorites yet.
+      </p>
+      <ul />
+    </section>
+  </main>
+</DocumentFragment>
+`;
+
+exports[`App > matches the quick generate visual baseline 1`] = `
+<DocumentFragment>
+  <main
+    class="app-shell"
+  >
+    <header
+      class="header"
+    >
+      <h1>
+        StoryTime
+      </h1>
+      <label
+        class="toggle"
+      >
+        <input
+          aria-label="Kid Shelf"
+          type="checkbox"
+        />
+        Kid Shelf
+      </label>
+    </header>
+    <section
+      aria-label="Quick Generate"
+      class="quick-generate-card"
+    >
+      <h2>
+        Quick Generate
+      </h2>
+      <label
+        for="child-name"
+      >
+        Child name
+      </label>
+      <input
+        id="child-name"
+        name="childName"
+        placeholder="Dreamer"
+        type="text"
+        value="Dreamer"
+      />
+      <label
+        for="duration"
+      >
+        Duration (6 min)
+      </label>
+      <input
+        aria-label="Duration"
+        id="duration"
+        max="15"
+        min="5"
+        step="1"
+        type="range"
+        value="6"
+      />
+      <label
+        for="mode"
+      >
+        Mode
+      </label>
+      <select
+        id="mode"
+      >
+        <option
+          value="series"
+        >
+          Series
+        </option>
+        <option
+          value="one-shot"
+        >
+          One-shot
+        </option>
+      </select>
+      <label
+        class="toggle"
+      >
+        <input
+          aria-label="Reduced motion"
+          type="checkbox"
+        />
+        Reduced motion playback
+      </label>
+      <button
+        type="button"
+      >
+        Generate story
+      </button>
+    </section>
+    <section
+      aria-label="Parent controls"
+      class="shelf"
+    >
+      <h3>
+        Parent Controls
+      </h3>
+      <div
+        class="parent-controls-row"
+      >
+        <button
+          type="button"
+        >
+          Verify parent with passkey
+        </button>
+      </div>
+      <label
+        class="toggle"
+      >
+        <input
+          aria-label="Notifications enabled"
+          disabled=""
+          type="checkbox"
+        />
+        Notifications enabled
+      </label>
+      <label
+        class="toggle"
+      >
+        <input
+          aria-label="Analytics enabled"
+          disabled=""
+          type="checkbox"
+        />
+        Analytics enabled
+      </label>
+    </section>
+    <section
+      aria-label="Recent stories"
+      class="shelf"
+    >
+      <h3>
+        Recent
+      </h3>
+      <p>
+        No stories generated yet.
+      </p>
+      <ul />
+    </section>
+    <section
+      aria-label="Favorite stories"
+      class="shelf"
+    >
+      <h3>
+        Favorites
+      </h3>
+      <p>
+        No favorites yet.
+      </p>
+      <ul />
+    </section>
+  </main>
+</DocumentFragment>
+`;

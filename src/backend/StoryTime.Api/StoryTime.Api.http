@@ -1,0 +1,6 @@
+@StoryTime.Api_HostAddress = http://localhost:5262
+
+GET {{StoryTime.Api_HostAddress}}/api/home/status
+Accept: application/json
+
+###

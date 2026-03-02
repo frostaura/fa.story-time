@@ -1,0 +1,171 @@
+.app-shell {
+  margin: 0 auto;
+  max-width: 48rem;
+  padding: 2rem 1rem 4rem;
+  color: #1d1d1f;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.quick-generate-card,
+.shelf {
+  background: #ffffff;
+  border: 1px solid #e7e7ec;
+  border-radius: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+}
+
+.quick-generate-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.toggle {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+input[type='range'],
+input[type='text'],
+input[type='password'],
+select {
+  width: 100%;
+}
+
+button {
+  background: #171717;
+  border: 0;
+  border-radius: 0.65rem;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+li {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.story-layout {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.poster-parallax {
+  background: linear-gradient(145deg, #e7edff, #f6f7fc);
+  border: 1px solid #dfe4f0;
+  border-radius: 0.75rem;
+  height: 5rem;
+  overflow: hidden;
+  position: relative;
+  width: 5rem;
+}
+
+.poster-layer {
+  animation-iteration-count: infinite;
+  animation-name: posterFloat;
+  animation-timing-function: linear;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  inset: 0;
+  position: absolute;
+}
+
+@keyframes posterFloat {
+  0% {
+    transform: translate3d(0, -2%, 0);
+  }
+  50% {
+    transform: translate3d(0, 2%, 0);
+  }
+  100% {
+    transform: translate3d(0, -2%, 0);
+  }
+}
+
+.story-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.audio-stack {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.audio-stack audio {
+  max-width: 16rem;
+}
+
+.story-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.parent-controls-row {
+  align-items: end;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr;
+  margin-bottom: 0.75rem;
+}
+
+.error {
+  color: #b42318;
+  margin: 0.75rem 0;
+}
+
+.paywall p {
+  margin: 0.5rem 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .quick-generate-card,
+  .shelf {
+    box-shadow: none;
+  }
+
+  .poster-layer {
+    animation: none !important;
+  }
+}

@@ -1,113 +1,85 @@
 <p align="center">
-  <img src="README.icon.png" alt="TaleWeaver" width="300" />
+  <img src="README.icon.png" alt="StoryTime" width="300" />
 </p>
 
-# TaleWeaver 🌙
+# StoryTime 🌙
 
-A mobile-first Progressive Web App that generates and plays personalized AI-powered bedtime stories.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
----
+A calm-first, mobile-focused story generation platform with a .NET API and React PWA frontend.
 
 ## Features
-
-- **Quick Generate**: One-tap story generation with customizable duration
-- **Series Mode**: Never-ending cohesive stories with a persistent Story Bible
-- **One-shot Mode**: Standalone stories with full customization
-- **AI Pipeline**: 5-pass coherence algorithm (outline → scene plan → scene batch → stitch → polish)
-- **Parallax Posters**: 3-5 layer animated story covers with gyroscope/tilt support
-- **Procedural Fallback**: SVG-based poster generation when AI images are unavailable
-- **Privacy First**: No personal data stored server-side; all stories/profiles in browser LocalStorage
-- **Parental Controls**: WebAuthn-gated settings, Kid Mode, approval workflows
-- **Offline Support**: Service worker queues generation requests when offline
-- **Subscription Tiers**: Trial (7-day), Plus, and Premium via Stripe
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, TypeScript 5, Vite, Redux Toolkit, Framer Motion |
-| Backend | .NET 10 Web API, Entity Framework Core |
-| Database | PostgreSQL (config & subscriptions only) |
-| AI | OpenRouter (Claude 3.5 Sonnet, Flux) |
-| TTS | Coqui TTS (local) |
-| Payments | Stripe |
-| Observability | OpenTelemetry → SigNoz |
-
----
+- Quick Generate from Home with always-visible duration slider.
+- Series continuity with Story Bible state.
+- One-shot generation mode.
+- Parent approval flow (teaser first, full audio on approval).
+- Kid Shelf browsing limited to Recent + Favorites.
+- Tier-based cooldown, concurrency, and duration enforcement.
+- Procedural parallax poster fallback with 3-5 layers.
+- Dedicated visual regression snapshot coverage for core UI states.
+- Automated WCAG AA contrast checks for core UI surfaces.
 
 ## Project Structure
-
 ```
-docs/               # Architecture, database, use cases, design specs
+docs/
+  specs/
+  testing/
 src/
-├── backend/        # .NET 10 Web API
-│   ├── TaleWeaver.Api/
-│   └── TaleWeaver.Api.Tests/
-└── frontend/       # React + Vite PWA
-    └── src/
-        ├── components/   # UI components
-        ├── pages/        # Route pages
-        ├── services/     # API client, localStorage, notifications
-        ├── store/        # Redux store & slices
-        └── types/        # TypeScript interfaces
+  backend/
+    StoryTime.Api/
+    StoryTime.Api.Tests/
+  frontend/
 ```
 
----
-
-## Getting Started
-
-### Prerequisites
-
+## Prerequisites
 - .NET 10 SDK
 - Node.js 18+
-- PostgreSQL 15+
-- (Optional) Coqui TTS server
+- npm
+- make
 
-### Backend
-
-```bash
-cd src/backend
-dotnet restore
-dotnet build
-dotnet run --project TaleWeaver.Api
-```
-
-### Frontend
-
+## Getting Started
 ```bash
 cd src/frontend
 npm install
+cd ../..
+dotnet restore src/backend/StoryTime.slnx
+```
+
+Run backend:
+```bash
+dotnet run --project src/backend/StoryTime.Api
+```
+
+Run frontend:
+```bash
+cd src/frontend
 npm run dev
 ```
 
-The frontend runs at http://localhost:5173
+## Quality Gates
+```bash
+make lint
+make build
+make test
+```
 
-### Configuration
+## Docker API
+```bash
+cp .env.example .env
+docker compose up --build -d
+curl http://localhost:8080/api/home/status
+docker compose down
+```
 
-Copy `appsettings.Development.json` and configure:
-
-- PostgreSQL connection string
-- OpenRouter API key
-- Stripe keys
-- Coqui TTS URL
-
----
+For live-provider readiness, set `STORYTIME_POSTER_PROVIDER_ENDPOINT`, `STORYTIME_NARRATION_PROVIDER_ENDPOINT`,
+`STORYTIME_AI_PROVIDER_ENDPOINT`, and `STORYTIME_CHECKOUT_PROVIDER_ENDPOINT` to real provider URLs. Story Bible
+persistence defaults to on (`STORYTIME_PERSIST_SERIES_STORY_BIBLE=true`) and can be tuned with
+`STORYTIME_PERSIST_CONTINUITY_FACTS` and `STORYTIME_STORY_BIBLE_FILE_PATH`.
 
 ## Documentation
-
-- [Architecture](docs/architecture.md)
-- [Database Schema](docs/database.md)
+- [System Spec](docs/specs/system_spec.md)
+- [Test Spec](docs/specs/test_spec.md)
+- [Traceability Matrix](docs/specs/traceability_matrix.md)
+- [Testing How-To](docs/testing/how-to-run.md)
 - [Use Cases](docs/use-cases.md)
-- [Frontend Design](docs/frontend.md)
-- [Class Diagrams](docs/classes.md)
-- [Sequence Diagrams](docs/sequence.md)
-
----
 
 ## License
-
 MIT License - see [LICENSE](./LICENSE) for details.
