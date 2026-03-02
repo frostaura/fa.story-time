@@ -75,6 +75,8 @@
     "favorites": "Favorites",
     "favoriteStoriesAria": "Favorite stories",
     "noFavoritesYet": "No favorites yet.",
+    "errorFriendly": "Unable to connect — stories you've already generated are still available below.",
+    "verifyToChange": "Verify parent identity to change this setting",
     "posterPreviewTemplate": "Poster preview for {title}",
     "teaserNarrationTemplate": "Teaser narration for {title}",
     "fullNarrationTemplate": "Full narration for {title}"

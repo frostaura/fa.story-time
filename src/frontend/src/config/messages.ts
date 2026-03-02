@@ -169,6 +169,8 @@ export const appMessages = Object.freeze({
     favorites: resolveUiMessage('favorites'),
     favoriteStoriesAria: resolveUiMessage('favoriteStoriesAria'),
     noFavoritesYet: resolveUiMessage('noFavoritesYet'),
+    errorFriendly: resolveUiMessage('errorFriendly'),
+    verifyToChange: resolveUiMessage('verifyToChange'),
     posterPreview: (title: string) =>
       withToken(resolveUiMessage('posterPreviewTemplate'), '{title}', title),
     teaserNarration: (title: string) =>
