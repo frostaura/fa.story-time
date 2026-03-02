@@ -12,7 +12,7 @@ public sealed class StoryTimeOptionsValidatorTests
 
         Assert.Equal("http://localhost:19081/storytime/poster", options.Generation.PosterModelProvider.Endpoint);
         Assert.Equal("http://localhost:19081/storytime/narration", options.Generation.NarrationProvider.Endpoint);
-        Assert.Equal("http://localhost:19081/storytime/ai", options.Generation.AiOrchestration.Endpoint);
+        Assert.Equal("https://openrouter.ai/api/v1/chat/completions", options.Generation.AiOrchestration.Endpoint);
         Assert.Equal("http://localhost:19081/storytime/checkout", options.Checkout.Provider.Endpoint);
     }
 
@@ -26,13 +26,33 @@ public sealed class StoryTimeOptionsValidatorTests
 
             Assert.Equal("https://provider.storytime.test/storytime/poster", options.Generation.PosterModelProvider.Endpoint);
             Assert.Equal("https://provider.storytime.test/storytime/narration", options.Generation.NarrationProvider.Endpoint);
-            Assert.Equal("https://provider.storytime.test/storytime/ai", options.Generation.AiOrchestration.Endpoint);
+            Assert.Equal("https://openrouter.ai/api/v1/chat/completions", options.Generation.AiOrchestration.Endpoint);
             Assert.Equal("https://provider.storytime.test/storytime/checkout", options.Checkout.Provider.Endpoint);
         }
         finally
         {
             Environment.SetEnvironmentVariable("STORYTIME_TEST_PROVIDER_BASE_URL", null);
         }
+    }
+
+    [Fact]
+    public void Validate_FailsWhenOpenRouterHeadersAreMissing()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.EnforceOpenRouterEndpoint = true;
+        options.Generation.AiOrchestration.Endpoint = "https://openrouter.ai/api/v1/chat/completions";
+        options.Generation.AiOrchestration.OpenRouterReferer = "";
+        options.Generation.AiOrchestration.OpenRouterTitle = "";
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("OpenRouterReferer", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("OpenRouterTitle", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -119,6 +139,34 @@ public sealed class StoryTimeOptionsValidatorTests
         Assert.Contains(
             result.Failures!,
             failure => failure.Contains("StoryTime:Generation:NarrativeTemplates", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenPersistedNarrativeTemplatesAreMissing()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.NarrativeTemplates.PersistedEpisodeSummary = "";
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("StoryTime:Generation:NarrativeTemplates", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenAnonymousIdentifierFallbackIsMissing()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Catalog.AnonymousIdentifierFallback = "";
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("StoryTime:Catalog:AnonymousIdentifierFallback", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -275,6 +323,90 @@ public sealed class StoryTimeOptionsValidatorTests
     }
 
     [Fact]
+    public void Validate_FailsWhenAiEndpointIsNotOpenRouterAndEnforcementIsEnabled()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.EnforceOpenRouterEndpoint = true;
+        options.Generation.AiOrchestration.Endpoint = "https://provider.storytime.test/storytime/ai";
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("Endpoint must target openrouter.ai", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenAiEndpointIsNotOpenRouterEvenWhenAiIsDisabled()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.Enabled = false;
+        options.Generation.AiOrchestration.Endpoint = "https://provider.storytime.test/storytime/ai";
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("Endpoint must target openrouter.ai", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenAiLocalFallbackIsEnabled()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.LocalFallbackEnabled = true;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("LocalFallbackEnabled must be false", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenOpenRouterEnforcementFlagIsDisabled()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.EnforceOpenRouterEndpoint = false;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("EnforceOpenRouterEndpoint must be true", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenAiStageResponseFormatInstructionIsMissing()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.StageResponseFormatInstruction = "";
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("StageResponseFormatInstruction", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_AcceptsOpenRouterAiEndpointWhenEnforced()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.EnforceOpenRouterEndpoint = true;
+        options.Generation.AiOrchestration.Endpoint = "https://openrouter.ai/api/v1/chat/completions";
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
     public void Validate_FailsWhenCheckoutDefaultTierIsUnknown()
     {
         var options = StoryTimeOptionsFactory.Create();
@@ -315,6 +447,149 @@ public sealed class StoryTimeOptionsValidatorTests
         Assert.Contains(
             result.Failures!,
             failure => failure.Contains("SemanticNarrativeTextMinWords", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenCheckoutUpgradeTierIsUnknown()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Checkout.UpgradeTier = "Diamond";
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("StoryTime:Checkout:UpgradeTier", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenPosterModelFailureRateIsNegative()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.PosterModelFailureRate = -0.1;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("PosterModelFailureRate", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenPosterModelFailureRateExceedsOne()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.PosterModelFailureRate = 1.1;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("PosterModelFailureRate", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(0.5)]
+    [InlineData(1.0)]
+    public void Validate_AcceptsValidPosterModelFailureRate(double rate)
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.PosterModelFailureRate = rate;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Theory]
+    [InlineData(7999)]
+    [InlineData(48001)]
+    public void Validate_FailsWhenAudioSampleRateIsOutOfRange(int sampleRate)
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AudioSampleRate = sampleRate;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("AudioSampleRate", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(8000)]
+    [InlineData(48000)]
+    public void Validate_AcceptsValidAudioSampleRate(int sampleRate)
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AudioSampleRate = sampleRate;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Theory]
+    [InlineData(119)]
+    [InlineData(1201)]
+    public void Validate_FailsWhenAudioBaseFrequencyIsOutOfRange(double freq)
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AudioBaseFrequencyHz = freq;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("AudioBaseFrequencyHz", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(120)]
+    [InlineData(1200)]
+    public void Validate_AcceptsValidAudioBaseFrequency(double freq)
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AudioBaseFrequencyHz = freq;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(33)]
+    public void Validate_FailsWhenHashedIdentifierByteLengthIsOutOfBounds(int length)
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Catalog.HashedIdentifierByteLength = length;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("HashedIdentifierByteLength", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(32)]
+    public void Validate_AcceptsValidHashedIdentifierByteLength(int length)
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Catalog.HashedIdentifierByteLength = length;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.True(result.Succeeded);
     }
 
     private static void SyncLayerSpeedsWithMap(StoryTimeOptions options)

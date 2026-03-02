@@ -54,6 +54,11 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
             errors.Add("StoryTime:Generation audio durations must be greater than zero.");
         }
 
+        if (options.Generation.PosterModelFailureRate is < 0 or > 1)
+        {
+            errors.Add("StoryTime:Generation:PosterModelFailureRate must be between 0 and 1.");
+        }
+
         if (options.Generation.TeaserAudioAmplitudeScale is <= 0 or > 1 ||
             options.Generation.FullAudioAmplitudeScale is <= 0 or > 1)
         {
@@ -186,6 +191,8 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
             string.IsNullOrWhiteSpace(options.Generation.NarrativeTemplates.ArcObjective) ||
             string.IsNullOrWhiteSpace(options.Generation.NarrativeTemplates.ContinuityFact) ||
             string.IsNullOrWhiteSpace(options.Generation.NarrativeTemplates.EpisodeSummary) ||
+            string.IsNullOrWhiteSpace(options.Generation.NarrativeTemplates.PersistedArcObjective) ||
+            string.IsNullOrWhiteSpace(options.Generation.NarrativeTemplates.PersistedEpisodeSummary) ||
             string.IsNullOrWhiteSpace(options.Generation.NarrativeTemplates.OneShotOutline) ||
             string.IsNullOrWhiteSpace(options.Generation.NarrativeTemplates.SeriesOutline) ||
             string.IsNullOrWhiteSpace(options.Generation.NarrativeTemplates.SeriesOutlineStandaloneArcContext) ||
@@ -253,6 +260,11 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
             errors.Add("StoryTime:Catalog:Provider is required.");
         }
 
+        if (string.IsNullOrWhiteSpace(options.Catalog.AnonymousIdentifierFallback))
+        {
+            errors.Add("StoryTime:Catalog:AnonymousIdentifierFallback is required.");
+        }
+
         if (string.IsNullOrWhiteSpace(options.Catalog.LibraryTitleWithArcTemplate) ||
             string.IsNullOrWhiteSpace(options.Catalog.LibraryTitleWithoutArcTemplate))
         {
@@ -299,6 +311,10 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
         else if (!options.TierLimits.ContainsKey(options.Checkout.DefaultTier))
         {
             errors.Add("StoryTime:Checkout:DefaultTier must match one of the configured StoryTime:TierLimits keys.");
+        }
+        else if (!options.TierLimits.ContainsKey(options.Checkout.UpgradeTier))
+        {
+            errors.Add("StoryTime:Checkout:UpgradeTier must match one of the configured StoryTime:TierLimits keys.");
         }
 
         if (options.Checkout.SessionTtlMinutes <= 0)
@@ -359,29 +375,65 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
             errors.Add("StoryTime:Messages:UnsupportedCatalogProvider must include the {Provider} token.");
         }
 
-        if (options.Generation.AiOrchestration.Enabled)
+        var aiOptions = options.Generation.AiOrchestration;
+        var aiEndpoint = aiOptions.Endpoint;
+        if (!string.IsNullOrWhiteSpace(aiEndpoint) && !IsOpenRouterEndpoint(aiEndpoint))
         {
-            var hasEndpoint = !string.IsNullOrWhiteSpace(options.Generation.AiOrchestration.Endpoint);
-            if (!hasEndpoint && !options.Generation.AiOrchestration.LocalFallbackEnabled)
+            errors.Add("StoryTime:Generation:AiOrchestration:Endpoint must target openrouter.ai.");
+        }
+
+        if (aiOptions.LocalFallbackEnabled)
+        {
+            errors.Add("StoryTime:Generation:AiOrchestration:LocalFallbackEnabled must be false.");
+        }
+
+        if (!aiOptions.EnforceOpenRouterEndpoint)
+        {
+            errors.Add("StoryTime:Generation:AiOrchestration:EnforceOpenRouterEndpoint must be true.");
+        }
+
+        if (aiOptions.Enabled)
+        {
+            var hasEndpoint = !string.IsNullOrWhiteSpace(aiOptions.Endpoint);
+            if (!hasEndpoint)
             {
-                errors.Add("StoryTime:Generation:AiOrchestration must configure Endpoint or enable LocalFallbackEnabled when enabled.");
+                errors.Add("StoryTime:Generation:AiOrchestration:Endpoint is required when enabled.");
             }
 
-            if (string.IsNullOrWhiteSpace(options.Generation.AiOrchestration.Model))
+            if (string.IsNullOrWhiteSpace(aiOptions.Model))
             {
                 errors.Add("StoryTime:Generation:AiOrchestration:Model is required when enabled.");
             }
 
-            if (options.Generation.AiOrchestration.TimeoutSeconds <= 0)
+            if (aiOptions.TimeoutSeconds <= 0)
             {
                 errors.Add("StoryTime:Generation:AiOrchestration:TimeoutSeconds must be greater than zero when enabled.");
             }
 
-            if (string.IsNullOrWhiteSpace(options.Generation.AiOrchestration.StageNames.Outline) ||
-                string.IsNullOrWhiteSpace(options.Generation.AiOrchestration.StageNames.ScenePlan) ||
-                string.IsNullOrWhiteSpace(options.Generation.AiOrchestration.StageNames.SceneBatch) ||
-                string.IsNullOrWhiteSpace(options.Generation.AiOrchestration.StageNames.Stitch) ||
-                string.IsNullOrWhiteSpace(options.Generation.AiOrchestration.StageNames.Polish))
+            if (string.IsNullOrWhiteSpace(aiOptions.StageResponseFormatInstruction))
+            {
+                errors.Add(
+                    "StoryTime:Generation:AiOrchestration:StageResponseFormatInstruction is required when enabled.");
+            }
+
+            if (hasEndpoint)
+            {
+                if (string.IsNullOrWhiteSpace(aiOptions.OpenRouterReferer))
+                {
+                    errors.Add("StoryTime:Generation:AiOrchestration:OpenRouterReferer is required when using openrouter.ai endpoint.");
+                }
+
+                if (string.IsNullOrWhiteSpace(aiOptions.OpenRouterTitle))
+                {
+                    errors.Add("StoryTime:Generation:AiOrchestration:OpenRouterTitle is required when using openrouter.ai endpoint.");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(aiOptions.StageNames.Outline) ||
+                string.IsNullOrWhiteSpace(aiOptions.StageNames.ScenePlan) ||
+                string.IsNullOrWhiteSpace(aiOptions.StageNames.SceneBatch) ||
+                string.IsNullOrWhiteSpace(aiOptions.StageNames.Stitch) ||
+                string.IsNullOrWhiteSpace(aiOptions.StageNames.Polish))
             {
                 errors.Add("StoryTime:Generation:AiOrchestration:StageNames values are required when enabled.");
             }
@@ -587,5 +639,16 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
         {
             errors.Add($"{path} cannot include {PosterRoles.Midground2} without {PosterRoles.Midground1}.");
         }
+    }
+
+    private static bool IsOpenRouterEndpoint(string endpoint)
+    {
+        if (!Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var uri) || string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return false;
+        }
+
+        return string.Equals(uri.Host, "openrouter.ai", StringComparison.OrdinalIgnoreCase) ||
+               uri.Host.EndsWith(".openrouter.ai", StringComparison.OrdinalIgnoreCase);
     }
 }

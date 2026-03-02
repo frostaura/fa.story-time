@@ -4,15 +4,21 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Buffers.Binary;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using StoryTime.Api.Contracts;
 using StoryTime.Api.Domain;
+using StoryTime.Api.Services;
 
 namespace StoryTime.Api.Tests.Integration;
 
 public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory
+        .WithWebHostBuilder(builder =>
+            builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false"))
+        .CreateClient();
 
     [Fact]
     public async Task HomeStatus_IsQuickGenerateFirst()
@@ -55,6 +61,14 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         using var response = await _client.SendAsync(request);
 
         Assert.False(response.Headers.TryGetValues("Access-Control-Allow-Origin", out _));
+    }
+
+    [Fact]
+    public async Task StoryFavorite_DeleteVerbIsRejected()
+    {
+        using var response = await _client.DeleteAsync("/api/stories/story-id/favorite");
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
 
     [Fact]
@@ -220,6 +234,65 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
     }
 
     [Fact]
+    public async Task CheckoutComplete_ReturnsBadRequestForExpiredSession()
+    {
+        using var client = factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false");
+            builder.UseSetting("StoryTime:Checkout:Provider:Mode", "External");
+            builder.UseSetting("StoryTime:Checkout:Provider:LocalFallbackEnabled", "false");
+            builder.UseSetting("StoryTime:Checkout:Provider:Endpoint", "https://payments.storytime.test/storytime/checkout");
+            builder.ConfigureServices(services =>
+            {
+                services.AddHttpClient(nameof(SubscriptionPolicyService))
+                    .ConfigurePrimaryHttpMessageHandler(() => new ExpiredCheckoutProviderHandler());
+            });
+        }).CreateClient();
+
+        const string userId = "user-checkout-expired-session";
+        var gateToken = await CreateGateTokenAsync(client, userId);
+
+        using var createCheckout = await client.PostAsJsonAsync(
+            $"/api/subscription/{userId}/checkout/session",
+            new SubscriptionCheckoutSessionRequest(gateToken, "Premium"));
+        createCheckout.EnsureSuccessStatusCode();
+        var checkoutSession = await createCheckout.Content.ReadFromJsonAsync<SubscriptionCheckoutSessionResponse>();
+        Assert.NotNull(checkoutSession);
+
+        using var completeCheckout = await client.PostAsJsonAsync(
+            $"/api/subscription/{userId}/checkout/complete",
+            new SubscriptionCheckoutCompleteRequest(gateToken, checkoutSession!.SessionId));
+        Assert.Equal(HttpStatusCode.BadRequest, completeCheckout.StatusCode);
+    }
+
+    [Fact]
+    public async Task GenerateApproveLibraryFlow_RemainsStableAcrossRepeatedRuns()
+    {
+        const string userId = "user-repeated-readiness";
+        for (var iteration = 0; iteration < 3; iteration++)
+        {
+            using var webhook = await _client.PostAsJsonAsync(
+                "/api/subscription/webhook",
+                new SubscriptionWebhookRequest(userId, "Premium", true));
+            webhook.EnsureSuccessStatusCode();
+
+            using var generatedResponse = await _client.PostAsJsonAsync(
+                "/api/stories/generate",
+                new GenerateStoryRequest(userId, "Ari", "series", 15, null, null, false));
+            generatedResponse.EnsureSuccessStatusCode();
+            var generated = await generatedResponse.Content.ReadFromJsonAsync<GenerateStoryResponse>();
+            Assert.NotNull(generated);
+
+            using var approve = await _client.PostAsync($"/api/stories/{generated!.StoryId}/approve", content: null);
+            approve.EnsureSuccessStatusCode();
+
+            var library = await _client.GetFromJsonAsync<LibraryResponse>($"/api/library/{userId}?kidMode=false");
+            Assert.NotNull(library);
+            Assert.Contains(library!.Recent, item => item.StoryId == generated.StoryId);
+        }
+    }
+
+    [Fact]
     public async Task TrialTier_RejectsLongStoriesAndCooldownRepeats()
     {
         using var longStoryAttempt = await _client.PostAsJsonAsync(
@@ -243,6 +316,61 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
             new GenerateStoryRequest("user-trial-cooldown", "Kai", "series", 5, null, null, false));
 
         Assert.Equal(HttpStatusCode.TooManyRequests, cooldownAttempt.StatusCode);
+    }
+
+    [Fact]
+    public async Task StoriesGenerate_ReturnsBadRequestForMalformedJsonPayload()
+    {
+        using var malformedRequest = new StringContent(
+            "{\"softUserId\":\"user-malformed\"",
+            Encoding.UTF8,
+            "application/json");
+        using var response = await _client.PostAsync("/api/stories/generate", malformedRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ParentGateVerify_ReturnsBadRequestForMalformedJsonPayload()
+    {
+        using var malformedRequest = new StringContent(
+            "{\"challengeId\":\"missing-quote}",
+            Encoding.UTF8,
+            "application/json");
+        using var response = await _client.PostAsync("/api/parent/parent-malformed/gate/verify", malformedRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SubscriptionPaywall_ReturnsPaywallInfoForTrialUser()
+    {
+        const string userId = "user-paywall-trial";
+
+        var paywall = await _client.GetFromJsonAsync<SubscriptionPaywallResponse>($"/api/subscription/{userId}/paywall");
+
+        Assert.NotNull(paywall);
+        Assert.Equal("Trial", paywall!.CurrentTier);
+        Assert.Equal("Premium", paywall.UpgradeTier);
+        Assert.Equal(10, paywall.MaxDurationMinutes);
+        Assert.Equal("/subscribe", paywall.UpgradeUrl);
+        Assert.Contains("Premium", paywall.Message);
+    }
+
+    [Fact]
+    public async Task SubscriptionPaywall_ReflectsUpgradedTier()
+    {
+        const string userId = "user-paywall-upgraded";
+        using var webhook = await _client.PostAsJsonAsync(
+            "/api/subscription/webhook",
+            new SubscriptionWebhookRequest(userId, "Premium", true));
+        webhook.EnsureSuccessStatusCode();
+
+        var paywall = await _client.GetFromJsonAsync<SubscriptionPaywallResponse>($"/api/subscription/{userId}/paywall");
+
+        Assert.NotNull(paywall);
+        Assert.Equal("Premium", paywall!.CurrentTier);
+        Assert.Equal(15, paywall.MaxDurationMinutes);
     }
 
     [Fact]
@@ -321,27 +449,60 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         return (credentialId, publicKey, privateKey);
     }
 
-    private async Task<string> CreateGateTokenAsync(string userId)
+    private Task<string> CreateGateTokenAsync(string userId) => CreateGateTokenAsync(_client, userId);
+
+    private async Task<string> CreateGateTokenAsync(HttpClient client, string userId)
     {
         var (credentialId, publicKey, privateKey) = CreateCredentialPair();
 
-        using var registerResponse = await _client.PostAsJsonAsync(
+        using var registerResponse = await client.PostAsJsonAsync(
             $"/api/parent/{userId}/gate/register",
             new ParentCredentialRegisterRequest(credentialId, publicKey));
         registerResponse.EnsureSuccessStatusCode();
 
-        using var challengeResponse = await _client.PostAsync($"/api/parent/{userId}/gate/challenge", null);
+        using var challengeResponse = await client.PostAsync($"/api/parent/{userId}/gate/challenge", null);
         challengeResponse.EnsureSuccessStatusCode();
         var challenge = await challengeResponse.Content.ReadFromJsonAsync<ParentGateChallengeResponse>();
         Assert.NotNull(challenge);
 
-        using var verifyResponse = await _client.PostAsJsonAsync(
+        using var verifyResponse = await client.PostAsJsonAsync(
             $"/api/parent/{userId}/gate/verify",
             new ParentGateVerifyRequest(challenge!.ChallengeId, BuildAssertion(challenge.Challenge, credentialId, privateKey)));
         verifyResponse.EnsureSuccessStatusCode();
         var gate = await verifyResponse.Content.ReadFromJsonAsync<ParentGateVerifyResponse>();
         Assert.NotNull(gate);
         return gate!.GateToken;
+    }
+
+    private sealed class ExpiredCheckoutProviderHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+            if (path.Contains("/storytime/checkout/session", StringComparison.Ordinal))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        """{"sessionId":"expired-session","checkoutUrl":"https://payments.storytime.dev/session/expired-session","expiresAt":"2000-01-01T00:00:00Z","upgradeTier":"Premium"}""",
+                        Encoding.UTF8,
+                        "application/json")
+                });
+            }
+
+            if (path.Contains("/storytime/checkout/complete", StringComparison.Ordinal))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        """{"success":true,"upgradeTier":"Premium"}""",
+                        Encoding.UTF8,
+                        "application/json")
+                });
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
     }
 
     private sealed record StorageAuditResponse(
