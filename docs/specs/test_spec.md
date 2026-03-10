@@ -34,7 +34,7 @@ Coverage goals:
 - Full premium series flow including continuation and approval.
 - Storage audit to ensure no narrative text persistence server-side.
 - Frontend Quick Generate interaction through fetch boundary.
-- Frontend browser-rendered flow validation through Playwright.
+- Frontend browser-rendered flow validation through Playwright, including responsive viewport coverage and a live-backend browser smoke path alongside mocked contract journeys.
 
 ### 2.4 Non-Functional Validation Matrix
 Location: backend integration/e2e suites, frontend Playwright suites, and `make test-coverage`.
@@ -92,9 +92,9 @@ A run is passing when:
 - Backend unit/integration/e2e regressions: **backend maintainers** own triage and fix.
 - Frontend unit/visual/vitest-e2e regressions: **frontend maintainers** own triage and fix.
 - Playwright/browser e2e regressions: **frontend + platform owners** jointly own triage when failures involve CI/browser infrastructure.
-- Blocking CI failures must be acknowledged within one business day and either fixed or explicitly quarantined with an owner and follow-up task (PR ownership routing is enforced through `.github/CODEOWNERS`).
+- Blocking CI failures must be acknowledged within one business day and either fixed or explicitly quarantined with an owner and follow-up task (PR ownership routing is enforced through `.github/CODEOWNERS`, and remediation issues use `.github/ISSUE_TEMPLATE/flaky-test.yml`).
 
 ## 9. Flaky Test Policy
 - A test is considered flaky if it fails non-deterministically across reruns without code/config changes.
-- Flaky tests are not silently ignored: open a remediation task, tag the owning domain, and either stabilize immediately or quarantine with an expiry task. CI enforces this by failing on committed `.skip(...)`/`.only(...)` markers.
-- Quarantined tests must be reviewed at least weekly and restored to blocking status once stabilized.
+- Flaky tests are not silently ignored: open a remediation task, tag the owning domain, and either stabilize immediately or quarantine with an expiry task. CI enforces this by failing on committed `.skip(...)`/`.only(...)` markers, and the remediation record uses `.github/ISSUE_TEMPLATE/flaky-test.yml`.
+- Quarantined tests must be reviewed at least weekly and restored to blocking status once stabilized (see `docs/testing/TEST-002-flaky-test-governance.md`).

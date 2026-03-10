@@ -589,10 +589,17 @@ li {
   margin-bottom: 0.75rem;
 }
 
+.story-card {
+  align-items: stretch;
+  flex-direction: column;
+}
+
 .story-layout {
   align-items: flex-start;
   display: flex;
   gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .poster-parallax {
@@ -632,6 +639,7 @@ li {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .audio-stack {
@@ -641,7 +649,8 @@ li {
 }
 
 .audio-stack audio {
-  max-width: 16rem;
+  max-width: 100%;
+  width: 100%;
 }
 
 .story-actions {
@@ -717,6 +726,11 @@ li {
     grid-template-columns: 1fr 1fr;
   }
 
+  .story-card {
+    align-items: center;
+    flex-direction: row;
+  }
+
   .shelf li {
     margin-bottom: 0;
   }
@@ -730,6 +744,26 @@ li {
 }
 
 /* --- MOD-02: prevent Kid Shelf label wrapping at narrow viewports --- */
+@media (max-width: 26rem) {
+  .header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .header-brand {
+    flex-wrap: wrap;
+  }
+
+  .header-toggle-divider {
+    display: none;
+  }
+
+  .header .toggle {
+    width: 100%;
+  }
+}
+
 @media (max-width: 22.5rem) {
   .header {
     gap: 0.25rem;

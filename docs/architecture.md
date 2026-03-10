@@ -6,7 +6,7 @@ StoryTime is a split web system optimized for calm bedtime flows, privacy-first 
 
 - **Frontend (`src/frontend`)**: React + TypeScript + Vite PWA that renders Home, Quick Generate, shelves, parent controls, and upgrade UX.
 - **Backend (`src/backend/StoryTime.Api`)**: ASP.NET Core minimal API that orchestrates story generation, policy checks, parent gate, subscriptions, and metadata-only library state.
-- **Test harness (`src/backend/StoryTime.Api.Tests`, `src/frontend/src/tests`, `src/frontend/tests/e2e`)**: unit/integration/e2e coverage validating behavior from contracts in `docs/specs/`.
+- **Test harness (`src/backend/StoryTime.Api.Tests`, `src/frontend/src/tests`, `src/frontend/tests/e2e`, `src/frontend/tests/playwright`)**: unit/integration/e2e/browser coverage validating behavior from contracts in `docs/specs/`.
 
 ## High-Level Architecture
 

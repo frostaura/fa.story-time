@@ -4,9 +4,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using StoryTime.Api;
 using StoryTime.Api.Contracts;
 using StoryTime.Api.Domain;
 using StoryTime.Api.Services;
@@ -403,6 +407,69 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         Assert.False(storageAudit.ContainsSemanticNarrativeLeakage);
     }
 
+    [Fact]
+    public async Task StoriesGenerate_LogsHashedIdentityWithoutRawPromptOrPiiFields()
+    {
+        const string softUserId = "raw-user-privacy-check-007";
+        const string childName = "Luna";
+        const string arcName = "Secret Moon Garden";
+        const string companionName = "Pip the Fox";
+        const string setting = "Lantern tunnels under the hill";
+        const string mood = "Sleepy but curious";
+        const string themeTrackId = "quiet-chimes";
+        const string narrationStyle = "whispered lullaby";
+
+        var logCollector = new TestLogCollector();
+        var instrumentedFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false");
+            builder.ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddProvider(logCollector);
+            });
+        });
+
+        using var client = instrumentedFactory.CreateClient();
+        using var scope = instrumentedFactory.Services.CreateScope();
+        var options = scope.ServiceProvider.GetRequiredService<IOptions<StoryTimeOptions>>().Value;
+        var request = new GenerateStoryRequest(
+            SoftUserId: softUserId,
+            ChildName: childName,
+            Mode: "one-shot",
+            DurationMinutes: 6,
+            SeriesId: null,
+            ApprovalRequired: null,
+            Favorite: false,
+            ReducedMotion: true,
+            Customization: new OneShotCustomizationRequest(
+                ArcName: arcName,
+                CompanionName: companionName,
+                Setting: setting,
+                Mood: mood,
+                ThemeTrackId: themeTrackId,
+                NarrationStyle: narrationStyle));
+
+        using var response = await client.PostAsJsonAsync("/api/stories/generate", request);
+        response.EnsureSuccessStatusCode();
+
+        var expectedHash = IdentifierHashing.HashIdentifier(
+            request.SoftUserId,
+            options.Catalog.HashedIdentifierByteLength,
+            options.Catalog.AnonymousIdentifierFallback);
+        var entries = logCollector.GetEntries();
+
+        Assert.Contains(entries, entry => entry.Contains(expectedHash, StringComparison.Ordinal));
+        Assert.DoesNotContain(entries, entry => entry.Contains(softUserId, StringComparison.Ordinal));
+        Assert.DoesNotContain(entries, entry => entry.Contains(childName, StringComparison.Ordinal));
+        Assert.DoesNotContain(entries, entry => entry.Contains(arcName, StringComparison.Ordinal));
+        Assert.DoesNotContain(entries, entry => entry.Contains(companionName, StringComparison.Ordinal));
+        Assert.DoesNotContain(entries, entry => entry.Contains(setting, StringComparison.Ordinal));
+        Assert.DoesNotContain(entries, entry => entry.Contains(mood, StringComparison.Ordinal));
+        Assert.DoesNotContain(entries, entry => entry.Contains(themeTrackId, StringComparison.Ordinal));
+        Assert.DoesNotContain(entries, entry => entry.Contains(narrationStyle, StringComparison.Ordinal));
+    }
+
     private static ParentGateAssertion BuildAssertion(string challenge, string credentialId, byte[] privateKey)
     {
         var clientDataRaw = JsonSerializer.Serialize(new
@@ -503,6 +570,49 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
             }
 
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+    }
+
+    private sealed class TestLogCollector : ILoggerProvider
+    {
+        private readonly ConcurrentQueue<string> _entries = new();
+
+        public IReadOnlyList<string> GetEntries() => _entries.ToArray();
+
+        public ILogger CreateLogger(string categoryName) => new TestLogger(categoryName, _entries);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class TestLogger(string categoryName, ConcurrentQueue<string> entries) : ILogger
+        {
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                entries.Enqueue($"{categoryName}|{logLevel}|{formatter(state, exception)}");
+                if (exception is not null)
+                {
+                    entries.Enqueue(exception.ToString());
+                }
+            }
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
+            }
         }
     }
 

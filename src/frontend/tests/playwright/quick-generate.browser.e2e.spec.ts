@@ -1,94 +1,26 @@
-import { expect, test, type Page } from '@playwright/test'
-
-const jsonHeaders = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-}
-
-const posterLayers = [
-  {
-    role: 'BACKGROUND',
-    speedMultiplier: 0.2,
-    dataUri: 'data:image/svg+xml;base64,PHN2Zy8+',
-  },
-  {
-    role: 'FOREGROUND',
-    speedMultiplier: 1.0,
-    dataUri: 'data:image/svg+xml;base64,PHN2Zy8+',
-  },
-  {
-    role: 'PARTICLES',
-    speedMultiplier: 1.3,
-    dataUri: 'data:image/svg+xml;base64,PHN2Zy8+',
-  },
-]
-
-const homeStatusPayload = {
-  quickGenerateVisible: true,
-  durationSliderVisible: true,
-  durationMinMinutes: 5,
-  durationMaxMinutes: 15,
-  durationDefaultMinutes: 6,
-  defaultChildName: 'Dreamer',
-  parentControlsEnabled: true,
-  defaultTier: 'Trial',
-  oneShotDefaults: {
-    arcName: 'Moonlit Harbor',
-    companionName: 'Pip the fox',
-    setting: 'Floating lantern docks',
-    mood: 'Curious and gentle',
-    themeTrackId: 'night-chimes',
-    narrationStyle: 'calm-storyteller',
-  },
-}
-
-const installCommonRoutes = async (page: Page) => {
-  await page.route('**/api/home/status', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: jsonHeaders,
-      body: JSON.stringify(homeStatusPayload),
-    })
-  })
-}
+import { expect, test } from '@playwright/test'
+import {
+  fulfillJson,
+  installCommonMockRoutes,
+  jsonHeaders,
+  mockGeneratedStory,
+  posterLayers,
+  setRangeValue,
+} from './support/storyMocks'
 
 test.beforeEach(async ({ page }) => {
-  await installCommonRoutes(page)
+  await installCommonMockRoutes(page)
 })
 
 test('UC-001 quick generate renders and completes in browser', async ({ page }) => {
   await page.route('**/api/library/**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: jsonHeaders,
-      body: JSON.stringify({
-        recent: [],
-        favorites: [],
-        kidModeEnabled: false,
-      }),
+    await fulfillJson(route, 200, {
+      recent: [],
+      favorites: [],
+      kidModeEnabled: false,
     })
   })
-
-  await page.route('**/api/stories/generate', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: jsonHeaders,
-      body: JSON.stringify({
-        storyId: 'playwright-story-1',
-        title: 'Ari and the Moonlit Meadow',
-        mode: 'series',
-        recap: 'Previously: calm winds.',
-        scenes: ['Scene 1', 'Scene 2'],
-        sceneCount: 2,
-        posterLayers,
-        approvalRequired: true,
-        teaserAudio: 'data:audio/wav;base64,AAA=',
-        fullAudioReady: false,
-        reducedMotion: false,
-        generatedAt: new Date().toISOString(),
-      }),
-    })
-  })
+  await mockGeneratedStory(page)
 
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Quick Generate' })).toBeVisible()
@@ -146,36 +78,18 @@ test('UC-002 series continuation keeps a stable seriesId and prior-context recap
 
 test('UC-003 parent approval unlocks full narration playback', async ({ page }) => {
   await page.route('**/api/library/**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: jsonHeaders,
-      body: JSON.stringify({
-        recent: [],
-        favorites: [],
-        kidModeEnabled: false,
-      }),
+    await fulfillJson(route, 200, {
+      recent: [],
+      favorites: [],
+      kidModeEnabled: false,
     })
   })
-
-  await page.route('**/api/stories/generate', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: jsonHeaders,
-      body: JSON.stringify({
-        storyId: 'approval-story-1',
-        title: 'Approval Story',
-        mode: 'series',
-        recap: 'A teaser-first story.',
-        scenes: ['Scene 1'],
-        sceneCount: 1,
-        posterLayers,
-        approvalRequired: true,
-        teaserAudio: 'data:audio/wav;base64,AAA=',
-        fullAudioReady: false,
-        reducedMotion: false,
-        generatedAt: new Date().toISOString(),
-      }),
-    })
+  await mockGeneratedStory(page, {
+    storyId: 'approval-story-1',
+    title: 'Approval Story',
+    recap: 'A teaser-first story.',
+    scenes: ['Scene 1'],
+    sceneCount: 1,
   })
 
   await page.route('**/api/stories/*/approve', async (route) => {
@@ -307,14 +221,9 @@ test('UC-005 duration paywall shows upgrade metadata on 402 response', async ({ 
   })
 
   await page.goto('/')
-  await page.getByLabel('Duration').evaluate((element) => {
-    const input = element as HTMLInputElement
-    input.value = '15'
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-    input.dispatchEvent(new Event('change', { bubbles: true }))
-  })
+  await setRangeValue(page, 'Duration', '15')
   await page.getByRole('button', { name: 'Generate story' }).click()
-  await expect(page.getByRole('heading', { name: 'Unlock Longer Stories' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /unlock longer stories/i })).toBeVisible()
   await expect(page.getByText('Upgrade to Premium for longer bedtime stories.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Confirm Premium upgrade' })).toBeVisible()
 })

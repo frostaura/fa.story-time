@@ -53,4 +53,7 @@
   - component-focused tests for extracted UI sections
 - `tests/e2e/`:
   - Vitest live-backend end-to-end flow checks
+- `tests/playwright/`:
   - Playwright browser-level rendering and interaction checks
+  - responsive viewport browser checks across mobile/tablet/desktop
+  - live-backend Playwright smoke coverage for critical browser flows

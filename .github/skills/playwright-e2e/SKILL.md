@@ -54,6 +54,7 @@ If no Makefile: create a task to add it (and do not proceed to “done” withou
 - Add Playwright dependency and config per stack conventions.
 - Ensure a single command can run tests headless in CI.
 - Ensure base URL configuration is environment-driven (no hardcoded hostnames).
+- If the repo already uses a hybrid E2E model (for example live-backend Vitest flows plus Playwright browser coverage), preserve that split and document which paths are mocked-contract checks versus live-backend browser checks.
 
 ## Step 3 — Translate UC acceptance criteria into specs
 

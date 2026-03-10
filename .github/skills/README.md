@@ -26,7 +26,7 @@ This folder contains **small, executable playbooks** used by Gaia agents.
 
 ## Web testing & regression
 
-- **playwright-e2e** — Add/extend Playwright specs; UC ID required in spec filename; follow repo conventions or standardize to `/tests/e2e/`.
+- **playwright-e2e** — Add/extend Playwright specs; UC ID required in spec filename; preserve any existing hybrid live-backend vs mocked-browser split when present.
 - **manual-regression-web** — Manual web regression using Playwright MCP tools (label: `playwright-mcp`).
 - **manual-regression-api** — Manual API regression via curl against compose stack (label: `curl`).
 

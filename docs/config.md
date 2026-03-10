@@ -327,6 +327,15 @@ This document is the operational reference for runtime configuration used by Sto
 - `VITE_PARENT_GATE_WEBAUTHN_USER_ID_MAX_LENGTH` must be a positive integer ≤ `VITE_PARENT_GATE_WEBAUTHN_USER_ID_PROTOCOL_MAX_LENGTH`.
 - Route keys are normalized to leading-slash route paths.
 
+### Intentional code-local constants
+
+- Business behavior stays config-driven (`StoryTime:*` and `VITE_*`), but some values intentionally remain in code because they are protocol, algorithm, or test-harness details rather than product behavior.
+- Examples:
+  - procedural media synthesis constants in backend services,
+  - browser/test host defaults such as Playwright and Vitest local ports (overrideable through environment variables),
+  - local-development WebAuthn/CORS defaults that are explicitly overridden for production deployment.
+- The rule of thumb in this repo is: entitlement, routing, limits, safety policy, and user-facing defaults belong in configuration; rendering math, protocol constants, and deterministic test harness defaults may remain code-local when they do not change shipped product behavior.
+
 ### Production deployment notes
 
 - **`StoryTime:ParentGate:RelyingPartyId`**: Defaults to `"localhost"` for local development. In production, this **must** be overridden via environment variable (`StoryTime__ParentGate__RelyingPartyId`) or a production `appsettings.Production.json` to match the deployment domain (e.g., `"storytime.example.com"`). WebAuthn assertions will fail if the relying party ID does not match the origin used by the browser.

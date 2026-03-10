@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const port = Number.parseInt(process.env.PLAYWRIGHT_WEB_PORT ?? '4173', 10)
+const backendHost = process.env.PLAYWRIGHT_API_HOST ?? '127.0.0.1'
+const backendPort = Number.parseInt(process.env.PLAYWRIGHT_API_PORT ?? '18080', 10)
 
 export default defineConfig({
   testDir: './tests/playwright',
@@ -9,12 +11,28 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${port}`,
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: `npm run preview -- --host 127.0.0.1 --port ${port}`,
-    port,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command:
+        `ASPNETCORE_URLS=http://${backendHost}:${backendPort} ` +
+        `StoryTime__Generation__AiOrchestration__Enabled=false ` +
+        `StoryTime__ParentGate__RequireAssertion=false ` +
+        `StoryTime__ParentGate__RequireChallengeBoundAssertion=false ` +
+        `StoryTime__ParentGate__RequireRegisteredCredential=false ` +
+        `StoryTime__Cors__AllowedOrigins__0=http://127.0.0.1:${port} ` +
+        `StoryTime__Cors__AllowedOrigins__1=http://localhost:${port} ` +
+        `dotnet run --no-launch-profile --project ../backend/StoryTime.Api`,
+      port: backendPort,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      command: `npm run preview -- --host 127.0.0.1 --port ${port}`,
+      port,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
   projects: [
     {
       name: 'chromium',
