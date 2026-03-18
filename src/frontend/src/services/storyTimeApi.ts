@@ -6,6 +6,10 @@ const jsonHeaders = Object.freeze({
   'Content-Type': 'application/json',
 })
 
+const withGateTokenHeader = (gateToken: string): HeadersInit => ({
+  'X-StoryTime-Gate-Token': gateToken,
+})
+
 const withJsonBody = (body: JsonObject): RequestInit => ({
   method: 'POST',
   headers: jsonHeaders,
@@ -15,8 +19,8 @@ const withJsonBody = (body: JsonObject): RequestInit => ({
 export const createStoryTimeApi = (apiBaseUrl: string) =>
   Object.freeze({
     getHomeStatus: () => fetch(buildApiUrl(apiBaseUrl, apiRoutes.homeStatus)),
-    getLibrary: (softUserId: string, kidMode: boolean) =>
-      fetch(buildApiUrl(apiBaseUrl, apiRoutes.library(softUserId, kidMode))),
+    getLibrary: (softUserId: string) =>
+      fetch(buildApiUrl(apiBaseUrl, apiRoutes.library(softUserId))),
     generateStory: (body: JsonObject) =>
       fetch(buildApiUrl(apiBaseUrl, apiRoutes.storyGenerate), {
         ...withJsonBody(body),
@@ -27,9 +31,9 @@ export const createStoryTimeApi = (apiBaseUrl: string) =>
         headers: jsonHeaders,
         body: JSON.stringify({ isFavorite }),
       }),
-    approveStory: (storyId: string) =>
+    approveStory: (storyId: string, body: JsonObject) =>
       fetch(buildApiUrl(apiBaseUrl, apiRoutes.storyApprove(storyId)), {
-        method: 'POST',
+        ...withJsonBody(body),
       }),
     registerParentCredential: (softUserId: string, body: JsonObject) =>
       fetch(buildApiUrl(apiBaseUrl, apiRoutes.parentGateRegister(softUserId)), {
@@ -43,8 +47,10 @@ export const createStoryTimeApi = (apiBaseUrl: string) =>
       fetch(buildApiUrl(apiBaseUrl, apiRoutes.parentGateVerify(softUserId)), {
         ...withJsonBody(body),
       }),
-    getParentSettingsWithToken: (softUserId: string, gateToken: string) =>
-      fetch(buildApiUrl(apiBaseUrl, apiRoutes.parentSettingsWithToken(softUserId, gateToken))),
+    getParentSettings: (softUserId: string, gateToken: string) =>
+      fetch(buildApiUrl(apiBaseUrl, apiRoutes.parentSettings(softUserId)), {
+        headers: withGateTokenHeader(gateToken),
+      }),
     updateParentSettings: (softUserId: string, body: JsonObject) =>
       fetch(buildApiUrl(apiBaseUrl, apiRoutes.parentSettings(softUserId)), {
         method: 'PUT',

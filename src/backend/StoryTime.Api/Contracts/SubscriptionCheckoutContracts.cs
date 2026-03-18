@@ -1,6 +1,9 @@
 namespace StoryTime.Api.Contracts;
 
-public sealed record SubscriptionCheckoutSessionRequest(string GateToken, string? UpgradeTier);
+public sealed record SubscriptionCheckoutSessionRequest(
+    string GateToken,
+    string? UpgradeTier,
+    string? ReturnUrl = null);
 
 public sealed record SubscriptionCheckoutSessionResponse(
     string SessionId,

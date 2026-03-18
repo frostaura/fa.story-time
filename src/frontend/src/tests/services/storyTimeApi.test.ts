@@ -13,20 +13,21 @@ describe('storyTimeApi', () => {
     const api = createStoryTimeApi('https://api.storytime.test/')
 
     await api.getHomeStatus()
-    await api.getLibrary('user with/slash', true)
+    await api.getLibrary('user with/slash')
 
     const fetchMock = vi.mocked(fetch)
     expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://api.storytime.test/api/home/status')
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'https://api.storytime.test/api/library/user%20with%2Fslash?kidMode=true',
+      'https://api.storytime.test/api/library/user%20with%2Fslash',
     )
   })
 
-  it('sends JSON payloads for story generation and parent settings update', async () => {
+  it('sends headers and JSON payloads for parent settings flows', async () => {
     const api = createStoryTimeApi('https://api.storytime.test')
 
     await api.generateStory({ softUserId: 'user-1', mode: 'series' })
+    await api.getParentSettings('user-1', 'gate-1')
     await api.updateParentSettings('user-1', {
       gateToken: 'gate-1',
       notificationsEnabled: true,
@@ -47,6 +48,13 @@ describe('storyTimeApi', () => {
       2,
       'https://api.storytime.test/api/parent/user-1/settings',
       expect.objectContaining({
+        headers: { 'X-StoryTime-Gate-Token': 'gate-1' },
+      }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'https://api.storytime.test/api/parent/user-1/settings',
+      expect.objectContaining({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -62,8 +70,8 @@ describe('storyTimeApi', () => {
     const api = createStoryTimeApi('')
 
     await api.setStoryFavorite('story/123', true)
-    await api.approveStory('story/123')
-    await api.createCheckoutSession('user/123', { gateToken: 'gate-1', upgradeTier: 'Premium' })
+    await api.approveStory('story/123', { softUserId: 'user-123', gateToken: 'gate-1' })
+    await api.createCheckoutSession('user/123', { gateToken: 'gate-1', upgradeTier: 'Plus' })
     await api.completeCheckoutSession('user/123', { gateToken: 'gate-1', sessionId: 'sess-1' })
 
     const fetchMock = vi.mocked(fetch)
@@ -78,7 +86,10 @@ describe('storyTimeApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       '/api/stories/story%2F123/approve',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ softUserId: 'user-123', gateToken: 'gate-1' }),
+      }),
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,

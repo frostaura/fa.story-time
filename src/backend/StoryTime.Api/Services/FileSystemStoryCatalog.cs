@@ -30,29 +30,30 @@ public sealed class FileSystemStoryCatalog(IOptions<StoryTimeOptions> options, I
         PersistSnapshot(snapshot);
     }
 
-    public StoryLibraryItem? SetApproval(string storyId)
+    public StoryLibraryItem? SetApproval(string softUserId, string storyId)
     {
         Dictionary<string, List<StoryLibraryItem>>? snapshot = null;
         StoryLibraryItem? approved = null;
         lock (_syncRoot)
         {
-            foreach (var stories in _storiesByUser.Values)
+            if (!_storiesByUser.TryGetValue(softUserId, out var stories))
             {
-                var story = stories.FirstOrDefault(s => s.StoryId == storyId);
-                if (story is null)
-                {
-                    continue;
-                }
-
-                story.FullAudioReady = true;
-                approved = Clone(story, stripAudioPayload: true);
-                approved.FullAudio = _mediaAssetService.BuildAudioDataUri(
-                    story.StoryId,
-                    _options.Generation.FullDurationSeconds,
-                    _options.Generation.FullAudioAmplitudeScale);
-                snapshot = CreatePersistableSnapshotUnsafe();
-                break;
+                return null;
             }
+
+            var story = stories.FirstOrDefault(s => s.StoryId == storyId);
+            if (story is null)
+            {
+                return null;
+            }
+
+            story.FullAudioReady = true;
+            approved = Clone(story, stripAudioPayload: true);
+            approved.FullAudio = _mediaAssetService.BuildAudioDataUri(
+                story.StoryId,
+                _options.Generation.FullDurationSeconds,
+                _options.Generation.FullAudioAmplitudeScale);
+            snapshot = CreatePersistableSnapshotUnsafe();
         }
 
         if (snapshot is null)

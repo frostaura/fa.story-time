@@ -19,29 +19,29 @@ public sealed class InMemoryStoryCatalog(IOptions<StoryTimeOptions> options, IMe
         }
     }
 
-    public StoryLibraryItem? SetApproval(string storyId)
+    public StoryLibraryItem? SetApproval(string softUserId, string storyId)
     {
-        foreach (var stories in _storiesByUser.Values)
+        if (!_storiesByUser.TryGetValue(softUserId, out var stories))
         {
-            lock (stories)
-            {
-                var story = stories.FirstOrDefault(s => s.StoryId == storyId);
-                if (story is null)
-                {
-                    continue;
-                }
-
-                story.FullAudioReady = true;
-                var approved = Clone(story, stripAudioPayload: true);
-                approved.FullAudio = _mediaAssetService.BuildAudioDataUri(
-                    story.StoryId,
-                    _options.Generation.FullDurationSeconds,
-                    _options.Generation.FullAudioAmplitudeScale);
-                return approved;
-            }
+            return null;
         }
 
-        return null;
+        lock (stories)
+        {
+            var story = stories.FirstOrDefault(s => s.StoryId == storyId);
+            if (story is null)
+            {
+                return null;
+            }
+
+            story.FullAudioReady = true;
+            var approved = Clone(story, stripAudioPayload: true);
+            approved.FullAudio = _mediaAssetService.BuildAudioDataUri(
+                story.StoryId,
+                _options.Generation.FullDurationSeconds,
+                _options.Generation.FullAudioAmplitudeScale);
+            return approved;
+        }
     }
 
     public bool SetFavorite(string storyId, bool isFavorite)

@@ -170,11 +170,10 @@ public sealed class StoryTimeOptionsValidatorTests
     }
 
     [Fact]
-    public void Validate_AllowsSeriesBiblePersistenceWithoutContinuityFacts()
+    public void Validate_AllowsBlankWebhookSecretForDisabledLocalWebhooks()
     {
         var options = StoryTimeOptionsFactory.Create();
-        options.Generation.PersistSeriesStoryBible = true;
-        options.Generation.PersistContinuityFacts = false;
+        options.Checkout.WebhookSharedSecret = "";
 
         var result = new StoryTimeOptionsValidator().Validate(name: null, options);
 
@@ -222,6 +221,20 @@ public sealed class StoryTimeOptionsValidatorTests
         Assert.Contains(
             result.Failures!,
             failure => failure.Contains("audio amplitude scales", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_FailsWhenCheckoutTierOrderDoesNotStartAtDefaultTier()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Checkout.TierOrder = ["Plus", "Trial", "Premium"];
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains("TierOrder must start", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -450,17 +463,17 @@ public sealed class StoryTimeOptionsValidatorTests
     }
 
     [Fact]
-    public void Validate_FailsWhenCheckoutUpgradeTierIsUnknown()
+    public void Validate_FailsWhenCheckoutTierOrderContainsUnknownTier()
     {
         var options = StoryTimeOptionsFactory.Create();
-        options.Checkout.UpgradeTier = "Diamond";
+        options.Checkout.TierOrder = ["Trial", "Diamond", "Premium"];
 
         var result = new StoryTimeOptionsValidator().Validate(name: null, options);
 
         Assert.False(result.Succeeded);
         Assert.Contains(
             result.Failures!,
-            failure => failure.Contains("StoryTime:Checkout:UpgradeTier", StringComparison.Ordinal));
+            failure => failure.Contains("StoryTime:Checkout:TierOrder", StringComparison.Ordinal));
     }
 
     [Fact]

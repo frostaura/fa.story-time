@@ -40,7 +40,7 @@ public sealed class FileSystemStoryCatalogTests
                     CreatedAt = DateTimeOffset.UtcNow
                 });
 
-            var approved = catalog.SetApproval("story-1");
+            var approved = catalog.SetApproval("user-persist", "story-1");
             Assert.NotNull(approved);
             Assert.True(approved!.FullAudioReady);
             Assert.StartsWith("data:audio/wav;base64,", approved.FullAudio);

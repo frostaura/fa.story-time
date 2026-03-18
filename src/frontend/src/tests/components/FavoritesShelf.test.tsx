@@ -28,7 +28,7 @@ describe('FavoritesShelf', () => {
     isFavorite: true,
   }
 
-  it('renders favorite story poster, teaser narration, and actions', () => {
+  it('renders favorite story poster, compact audio summary, and actions', () => {
     render(
       <FavoritesShelf
         getLayerStyle={() => ({})}
@@ -40,9 +40,25 @@ describe('FavoritesShelf', () => {
     )
 
     expect(screen.getByRole('img', { name: 'Poster preview for Starlit Harbor' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Teaser narration for Starlit Harbor')).toBeInTheDocument()
+    expect(screen.getByTestId('favorite-story-audio-summary-story-2')).toHaveTextContent('Preview clip')
     expect(screen.getByRole('button', { name: 'Approve full narration' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Unfavorite' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Teaser narration for Starlit Harbor')).not.toBeInTheDocument()
+  })
+
+  it('renders a compact empty favorites state', () => {
+    render(
+      <FavoritesShelf
+        getLayerStyle={() => ({})}
+        onApproveStory={() => {}}
+        onToggleFavorite={() => {}}
+        stories={[]}
+        ui={ui}
+      />,
+    )
+
+    expect(screen.getByTestId('favorite-stories-shelf')).toHaveAttribute('data-empty', 'true')
+    expect(screen.getByText('Star your favorites to find them here!')).toBeInTheDocument()
   })
 
   it('invokes approve and unfavorite callbacks', async () => {

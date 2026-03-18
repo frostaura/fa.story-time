@@ -8,9 +8,9 @@ public interface ISubscriptionPolicyService
 
     bool ApplyWebhook(string softUserId, string tier, bool resetCooldown);
 
-    PaywallInfo GetPaywallInfo(string softUserId);
+    PaywallInfo GetPaywallInfo(string softUserId, int? requestedDurationMinutes = null);
 
-    CheckoutSession? CreateCheckoutSession(string softUserId, string? upgradeTier, DateTimeOffset now);
+    CheckoutSession? CreateCheckoutSession(string softUserId, string? upgradeTier, string returnUrl, DateTimeOffset now);
 
     CheckoutCompletion? CompleteCheckoutSession(string softUserId, string sessionId, DateTimeOffset now);
 }

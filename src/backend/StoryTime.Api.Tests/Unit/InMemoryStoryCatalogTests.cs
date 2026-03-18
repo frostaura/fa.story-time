@@ -162,7 +162,7 @@ public sealed class InMemoryStoryCatalogTests
         var catalog = CreateCatalog();
         catalog.Add("user-approve", CreateItem("story-approve"));
 
-        var approved = catalog.SetApproval("story-approve");
+        var approved = catalog.SetApproval("user-approve", "story-approve");
 
         Assert.NotNull(approved);
         Assert.True(approved!.FullAudioReady);
@@ -175,7 +175,7 @@ public sealed class InMemoryStoryCatalogTests
     {
         var catalog = CreateCatalog();
 
-        var approved = catalog.SetApproval("nonexistent");
+        var approved = catalog.SetApproval("user-approve", "nonexistent");
 
         Assert.Null(approved);
     }

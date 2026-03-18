@@ -7,10 +7,23 @@ services:
       - "${API_PORT:-8080}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      StoryTime__Generation__PersistSeriesStoryBible: ${STORYTIME_PERSIST_SERIES_STORY_BIBLE:-true}
-      StoryTime__Generation__PersistContinuityFacts: ${STORYTIME_PERSIST_CONTINUITY_FACTS:-true}
-      StoryTime__Generation__StoryBibleFilePath: ${STORYTIME_STORY_BIBLE_FILE_PATH:-data/story-bibles.json}
+      StoryTime__ParentGate__StateFilePath: ${STORYTIME_PARENT_STATE_FILE_PATH:-data/parent-state.json}
+      StoryTime__Checkout__StateFilePath: ${STORYTIME_SUBSCRIPTION_STATE_FILE_PATH:-data/subscription-state.json}
+      StoryTime__Checkout__WebhookSharedSecret: ${STORYTIME_CHECKOUT_WEBHOOK_SHARED_SECRET:-}
+      StoryTime__Checkout__DefaultReturnUrl: ${STORYTIME_CHECKOUT_DEFAULT_RETURN_URL:-http://localhost:4173/}
+      StoryTime__ParentGate__RequireUserVerification: ${STORYTIME_REQUIRE_USER_VERIFICATION:-true}
       StoryTime__Generation__PosterModelProvider__Endpoint: ${STORYTIME_POSTER_PROVIDER_ENDPOINT:-}
       StoryTime__Generation__NarrationProvider__Endpoint: ${STORYTIME_NARRATION_PROVIDER_ENDPOINT:-}
       StoryTime__Generation__AiOrchestration__Endpoint: ${STORYTIME_AI_PROVIDER_ENDPOINT:-https://openrouter.ai/api/v1/chat/completions}
+      StoryTime__Generation__AiOrchestration__OpenRouterReferer: ${STORYTIME_AI_PROVIDER_REFERER:-}
       StoryTime__Checkout__Provider__Endpoint: ${STORYTIME_CHECKOUT_PROVIDER_ENDPOINT:-}
+  frontend:
+    build:
+      context: .
+      dockerfile: src/frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${FRONTEND_API_BASE_URL:-http://localhost:8080}
+    depends_on:
+      - api
+    ports:
+      - "${FRONTEND_PORT:-4173}:4173"

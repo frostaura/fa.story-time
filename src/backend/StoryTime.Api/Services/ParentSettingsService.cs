@@ -1,5 +1,5 @@
-using System.Collections.Concurrent;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -11,7 +11,11 @@ namespace StoryTime.Api.Services;
 public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : IParentSettingsService
 {
     private readonly StoryTimeOptions _options = options.Value;
-    private readonly ConcurrentDictionary<string, ParentState> _states = new(StringComparer.Ordinal);
+    private readonly string _stateFilePath = JsonFileStateStore.ResolvePath(options.Value.ParentGate.StateFilePath);
+    private readonly object _persistSyncRoot = new();
+    private readonly ConcurrentDictionary<string, ParentState> _states = LoadStates(
+        JsonFileStateStore.ResolvePath(options.Value.ParentGate.StateFilePath),
+        options.Value.ParentDefaults);
 
     public bool RegisterCredential(string softUserId, string credentialId, string publicKey)
     {
@@ -30,6 +34,7 @@ public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : 
         {
             state.Credentials[credentialId] = keyBytes;
             state.SignatureCounters[credentialId] = 0;
+            PersistStates();
             return true;
         }
     }
@@ -88,6 +93,7 @@ public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : 
             var gateToken = Guid.NewGuid().ToString("N");
             var expiresAt = now.AddMinutes(Math.Max(1, _options.ParentGate.SessionTtlMinutes));
             state.Sessions[gateToken] = expiresAt;
+            PersistStates();
             return new ParentGateSession(gateToken, expiresAt);
         }
     }
@@ -99,7 +105,7 @@ public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : 
         {
             CleanupExpired(state, now);
             return IsAuthorized(state, gateToken, now)
-                ? new ParentSettingsSnapshot(state.NotificationsEnabled, state.AnalyticsEnabled)
+                ? new ParentSettingsSnapshot(state.NotificationsEnabled, state.AnalyticsEnabled, state.KidShelfEnabled)
                 : null;
         }
     }
@@ -114,7 +120,22 @@ public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : 
         }
     }
 
-    public ParentSettingsSnapshot? UpdateSettings(string softUserId, string gateToken, bool notificationsEnabled, bool analyticsEnabled, DateTimeOffset now)
+    public bool IsKidShelfEnabled(string softUserId)
+    {
+        var state = _states.GetOrAdd(softUserId, _ => CreateState());
+        lock (state.SyncRoot)
+        {
+            return state.KidShelfEnabled;
+        }
+    }
+
+    public ParentSettingsSnapshot? UpdateSettings(
+        string softUserId,
+        string gateToken,
+        bool notificationsEnabled,
+        bool analyticsEnabled,
+        bool kidShelfEnabled,
+        DateTimeOffset now)
     {
         var state = _states.GetOrAdd(softUserId, _ => CreateState());
         lock (state.SyncRoot)
@@ -127,14 +148,17 @@ public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : 
 
             state.NotificationsEnabled = notificationsEnabled;
             state.AnalyticsEnabled = analyticsEnabled;
-            return new ParentSettingsSnapshot(state.NotificationsEnabled, state.AnalyticsEnabled);
+            state.KidShelfEnabled = kidShelfEnabled;
+            PersistStates();
+            return new ParentSettingsSnapshot(state.NotificationsEnabled, state.AnalyticsEnabled, state.KidShelfEnabled);
         }
     }
 
     private ParentState CreateState() => new()
     {
         NotificationsEnabled = _options.ParentDefaults.NotificationsEnabled,
-        AnalyticsEnabled = _options.ParentDefaults.AnalyticsEnabled
+        AnalyticsEnabled = _options.ParentDefaults.AnalyticsEnabled,
+        KidShelfEnabled = _options.ParentDefaults.KidShelfEnabled
     };
 
     private bool IsAssertionMatch(
@@ -203,8 +227,7 @@ public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : 
         }
 
         if (_options.ParentGate.AllowedOrigins.Count > 0 &&
-            !_options.ParentGate.AllowedOrigins.Any(origin =>
-                string.Equals(origin, clientData.Origin, StringComparison.OrdinalIgnoreCase)))
+            !_options.ParentGate.AllowedOrigins.Any(origin => IsAllowedOriginMatch(origin, clientData.Origin)))
         {
             return false;
         }
@@ -231,12 +254,137 @@ public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : 
 
         using var key = ECDsa.Create();
         key.ImportSubjectPublicKeyInfo(keyBytes, out _);
-        if (!key.VerifyData(signedPayload, signatureBytes, HashAlgorithmName.SHA256))
+        if (!key.VerifyData(
+                signedPayload,
+                signatureBytes,
+                HashAlgorithmName.SHA256,
+                DSASignatureFormat.Rfc3279DerSequence))
         {
             return false;
         }
 
         return IsSignatureCounterValid(state, assertion.CredentialId, authenticatorData.SignCount);
+    }
+
+    private void PersistStates()
+    {
+        lock (_persistSyncRoot)
+        {
+            var persisted = _states.ToDictionary(
+                pair => pair.Key,
+                pair =>
+                {
+                    lock (pair.Value.SyncRoot)
+                    {
+                        return new PersistedParentState(
+                            pair.Value.NotificationsEnabled,
+                            pair.Value.AnalyticsEnabled,
+                            pair.Value.KidShelfEnabled,
+                            pair.Value.Credentials.ToDictionary(
+                                credential => credential.Key,
+                                credential => Convert.ToBase64String(credential.Value),
+                                StringComparer.Ordinal),
+                            new Dictionary<string, uint>(pair.Value.SignatureCounters, StringComparer.Ordinal),
+                            new Dictionary<string, DateTimeOffset>(pair.Value.Sessions, StringComparer.Ordinal));
+                    }
+                },
+                StringComparer.Ordinal);
+
+            JsonFileStateStore.Save(_stateFilePath, persisted);
+        }
+    }
+
+    private static bool IsAllowedOriginMatch(string configuredOrigin, string actualOrigin)
+    {
+        if (string.Equals(configuredOrigin, actualOrigin, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!Uri.TryCreate(configuredOrigin, UriKind.Absolute, out var configuredUri) ||
+            !Uri.TryCreate(actualOrigin, UriKind.Absolute, out var actualUri))
+        {
+            return false;
+        }
+
+        if (!string.Equals(configuredUri.Scheme, actualUri.Scheme, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(configuredUri.Host, actualUri.Host, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!HasExplicitPort(configuredOrigin))
+        {
+            return true;
+        }
+
+        return configuredUri.Port == actualUri.Port;
+    }
+
+    private static bool HasExplicitPort(string origin)
+    {
+        var schemeSeparator = origin.IndexOf("://", StringComparison.Ordinal);
+        if (schemeSeparator < 0)
+        {
+            return false;
+        }
+
+        var authority = origin[(schemeSeparator + 3)..];
+        var slashIndex = authority.IndexOf('/');
+        if (slashIndex >= 0)
+        {
+            authority = authority[..slashIndex];
+        }
+
+        if (authority.StartsWith('['))
+        {
+            var closingBracket = authority.IndexOf(']');
+            return closingBracket >= 0 &&
+                   closingBracket + 1 < authority.Length &&
+                   authority[closingBracket + 1] == ':';
+        }
+
+        return authority.Contains(':');
+    }
+
+    private static ConcurrentDictionary<string, ParentState> LoadStates(string path, ParentSettingsDefaults defaults)
+    {
+        var persisted = JsonFileStateStore.Load(
+            path,
+            new Dictionary<string, PersistedParentState>(StringComparer.Ordinal));
+        var states = new ConcurrentDictionary<string, ParentState>(StringComparer.Ordinal);
+
+        foreach (var (softUserId, value) in persisted)
+        {
+            var state = new ParentState
+            {
+                NotificationsEnabled = value.NotificationsEnabled,
+                AnalyticsEnabled = value.AnalyticsEnabled,
+                KidShelfEnabled = value.KidShelfEnabled
+            };
+
+            foreach (var (credentialId, publicKey) in value.Credentials)
+            {
+                if (TryDecodePublicKey(publicKey, out var keyBytes))
+                {
+                    state.Credentials[credentialId] = keyBytes;
+                }
+            }
+
+            foreach (var (credentialId, signCount) in value.SignatureCounters)
+            {
+                state.SignatureCounters[credentialId] = signCount;
+            }
+
+            foreach (var (gateToken, expiresAt) in value.Sessions)
+            {
+                state.Sessions[gateToken] = expiresAt;
+            }
+
+            states[softUserId] = state;
+        }
+
+        return states;
     }
 
     private static bool TryDecodePublicKey(string publicKey, out byte[] keyBytes)
@@ -378,6 +526,8 @@ public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : 
         public bool NotificationsEnabled { get; set; }
 
         public bool AnalyticsEnabled { get; set; }
+
+        public bool KidShelfEnabled { get; set; }
     }
 
     private sealed record ParentChallengeState(byte[] Value, DateTimeOffset ExpiresAt);
@@ -385,4 +535,12 @@ public sealed class ParentSettingsService(IOptions<StoryTimeOptions> options) : 
     private sealed record WebAuthnClientData(string Type, string Challenge, string Origin);
 
     private sealed record ParsedAuthenticatorData(byte[] RelyingPartyHash, bool UserPresent, bool UserVerified, uint SignCount);
+
+    private sealed record PersistedParentState(
+        bool NotificationsEnabled,
+        bool AnalyticsEnabled,
+        bool KidShelfEnabled,
+        IReadOnlyDictionary<string, string> Credentials,
+        IReadOnlyDictionary<string, uint> SignatureCounters,
+        IReadOnlyDictionary<string, DateTimeOffset> Sessions);
 }

@@ -44,14 +44,15 @@ public sealed class SubscriptionPolicyServiceTests
     public void CheckoutSession_UpgradesTierAndResetsCooldown()
     {
         var now = DateTimeOffset.UtcNow;
-        var session = _service.CreateCheckoutSession("user-checkout", "Premium", now);
+        var session = _service.CreateCheckoutSession("user-checkout", null, "https://app.storytime.test/checkout", now);
         Assert.NotNull(session);
+        Assert.Equal("Plus", session!.UpgradeTier);
 
-        var completion = _service.CompleteCheckoutSession("user-checkout", session!.SessionId, now.AddMinutes(1));
+        var completion = _service.CompleteCheckoutSession("user-checkout", session.SessionId, now.AddMinutes(1));
         Assert.NotNull(completion);
-        Assert.Equal("Premium", completion!.CurrentTier);
+        Assert.Equal("Plus", completion!.CurrentTier);
 
-        var decision = _service.TryStartGeneration("user-checkout", 15, now.AddMinutes(2));
+        var decision = _service.TryStartGeneration("user-checkout", 12, now.AddMinutes(2));
         Assert.True(decision.Allowed);
     }
 
@@ -94,18 +95,40 @@ public sealed class SubscriptionPolicyServiceTests
     [Fact]
     public void CheckoutSession_UsesExternalProvider_WhenAvailable()
     {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Checkout.Provider.ApiKey = "checkout-test-key";
+        options.Checkout.Provider.LocalFallbackEnabled = false;
+        var handler = new SuccessfulCheckoutHandler();
         var service = new SubscriptionPolicyService(
-            Options.Create(StoryTimeOptionsFactory.Create()),
-            new TestHttpClientFactory(new SuccessfulCheckoutHandler()));
+            Options.Create(options),
+            new TestHttpClientFactory(handler));
         var now = DateTimeOffset.UtcNow;
 
-        var session = service.CreateCheckoutSession("user-external-checkout", "Premium", now);
+        var session = service.CreateCheckoutSession("user-external-checkout", "Plus", "https://app.storytime.test/checkout", now);
         Assert.NotNull(session);
         Assert.StartsWith("https://payments.storytime.dev", session!.CheckoutUrl, StringComparison.Ordinal);
 
         var completion = service.CompleteCheckoutSession("user-external-checkout", session.SessionId, now.AddMinutes(1));
         Assert.NotNull(completion);
-        Assert.Equal("Premium", completion!.UpgradeTier);
+        Assert.Equal("Plus", completion!.UpgradeTier);
+
+        Assert.Equal(2, handler.Requests.Count);
+
+        var createRequest = handler.Requests[0];
+        Assert.Equal("/storytime/checkout/session", createRequest.Path);
+        Assert.Equal("Bearer", createRequest.AuthorizationScheme);
+        Assert.Equal("checkout-test-key", createRequest.AuthorizationParameter);
+        Assert.Contains("\"softUserId\":\"user-external-checkout\"", createRequest.Body, StringComparison.Ordinal);
+        Assert.Contains("\"currentTier\":\"Trial\"", createRequest.Body, StringComparison.Ordinal);
+        Assert.Contains("\"targetTier\":\"Plus\"", createRequest.Body, StringComparison.Ordinal);
+        Assert.Contains("\"callbackUrl\":\"https://app.storytime.test/checkout\"", createRequest.Body, StringComparison.Ordinal);
+
+        var completeRequest = handler.Requests[1];
+        Assert.Equal("/storytime/checkout/complete", completeRequest.Path);
+        Assert.Equal("Bearer", completeRequest.AuthorizationScheme);
+        Assert.Equal("checkout-test-key", completeRequest.AuthorizationParameter);
+        Assert.Contains($"\"sessionId\":\"{session.SessionId}\"", completeRequest.Body, StringComparison.Ordinal);
+        Assert.Contains("\"targetTier\":\"Plus\"", completeRequest.Body, StringComparison.Ordinal);
     }
 
     private sealed class TestHttpClientFactory(HttpMessageHandler? handler = null) : IHttpClientFactory
@@ -121,15 +144,23 @@ public sealed class SubscriptionPolicyServiceTests
 
     private sealed class SuccessfulCheckoutHandler : HttpMessageHandler
     {
+        public List<CapturedRequest> Requests { get; } = [];
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            Requests.Add(new CapturedRequest(
+                request.RequestUri?.AbsolutePath ?? string.Empty,
+                request.Headers.Authorization?.Scheme,
+                request.Headers.Authorization?.Parameter,
+                request.Content?.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult() ?? string.Empty));
+
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
             if (path.EndsWith("/storytime/checkout/session", StringComparison.Ordinal))
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(
-                        """{"sessionId":"ext-123","checkoutUrl":"https://payments.storytime.dev/session/ext-123","expiresAt":"2030-01-01T00:00:00Z","upgradeTier":"Premium"}""",
+                        """{"sessionId":"ext-123","checkoutUrl":"https://payments.storytime.dev/session/ext-123","expiresAt":"2030-01-01T00:00:00Z","upgradeTier":"Plus"}""",
                         Encoding.UTF8,
                         "application/json")
                 });
@@ -140,7 +171,7 @@ public sealed class SubscriptionPolicyServiceTests
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(
-                        """{"success":true,"upgradeTier":"Premium"}""",
+                        """{"success":true,"upgradeTier":"Plus"}""",
                         Encoding.UTF8,
                         "application/json")
                 });
@@ -149,4 +180,10 @@ public sealed class SubscriptionPolicyServiceTests
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
     }
+
+    private sealed record CapturedRequest(
+        string Path,
+        string? AuthorizationScheme,
+        string? AuthorizationParameter,
+        string Body);
 }

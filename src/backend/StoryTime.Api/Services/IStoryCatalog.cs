@@ -6,7 +6,7 @@ public interface IStoryCatalog
 {
     void Add(string softUserId, StoryLibraryItem item);
 
-    StoryLibraryItem? SetApproval(string storyId);
+    StoryLibraryItem? SetApproval(string softUserId, string storyId);
 
     bool SetFavorite(string storyId, bool isFavorite);
 

@@ -49,6 +49,58 @@ public sealed class StoryTimeOptions
 
         throw new InvalidOperationException(Messages.Internal("TierLimitsMustDefineTrial"));
     }
+
+    public IReadOnlyList<string> GetTierOrder()
+    {
+        var configured = Checkout.TierOrder
+            .Where(tier => !string.IsNullOrWhiteSpace(tier))
+            .Select(tier => tier.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (configured.Length > 0)
+        {
+            return configured;
+        }
+
+        var defaultTier = Checkout.DefaultTier?.Trim();
+        if (string.IsNullOrWhiteSpace(defaultTier))
+        {
+            throw new InvalidOperationException(Messages.Internal("CheckoutDefaultTierMustBeConfigured"));
+        }
+
+        return [defaultTier];
+    }
+
+    public string GetNextTier(string currentTier)
+    {
+        var order = GetTierOrder();
+        var currentIndex = order
+            .Select((tier, index) => new { tier, index })
+            .FirstOrDefault(entry => string.Equals(entry.tier, currentTier, StringComparison.OrdinalIgnoreCase))
+            ?.index ?? 0;
+
+        return currentIndex >= order.Count - 1
+            ? order[^1]
+            : order[currentIndex + 1];
+    }
+
+    public bool IsHigherTier(string currentTier, string targetTier)
+    {
+        var order = GetTierOrder();
+        var currentIndex = order
+            .Select((tier, index) => new { tier, index })
+            .FirstOrDefault(entry => string.Equals(entry.tier, currentTier, StringComparison.OrdinalIgnoreCase))
+            ?.index ?? -1;
+        var targetIndex = order
+            .Select((tier, index) => new { tier, index })
+            .FirstOrDefault(entry => string.Equals(entry.tier, targetTier, StringComparison.OrdinalIgnoreCase))
+            ?.index ?? -1;
+
+        return currentIndex >= 0 &&
+            targetIndex >= 0 &&
+            targetIndex > currentIndex;
+    }
 }
 
 public sealed class UiDefaults
@@ -74,13 +126,7 @@ public sealed class GenerationOptions
 
     public int ProceduralPosterFallbackBudgetMilliseconds { get; set; }
 
-    public bool PersistSeriesStoryBible { get; set; }
-
-    public bool PersistContinuityFacts { get; set; }
-
     public int ContinuityFactRetentionLimit { get; set; } = 30;
-
-    public string StoryBibleFilePath { get; set; } = "";
 
     public int MinutesPerScene { get; set; }
 
@@ -331,6 +377,8 @@ public sealed class ParentGateOptions
 
     public bool RequireUserVerification { get; set; }
 
+    public string StateFilePath { get; set; } = "";
+
     public string RelyingPartyId { get; set; } = "";
 
     public string AssertionType { get; set; } = "";
@@ -343,6 +391,8 @@ public sealed class ParentSettingsDefaults
     public bool NotificationsEnabled { get; set; }
 
     public bool AnalyticsEnabled { get; set; }
+
+    public bool KidShelfEnabled { get; set; }
 }
 
 public sealed class CatalogOptions
@@ -385,11 +435,17 @@ public sealed class CheckoutOptions
 {
     public string DefaultTier { get; set; } = "";
 
-    public string UpgradeTier { get; set; } = "";
-
     public string UpgradeUrl { get; set; } = "";
 
+    public string DefaultReturnUrl { get; set; } = "";
+
+    public List<string> TierOrder { get; set; } = [];
+
     public int SessionTtlMinutes { get; set; }
+
+    public string StateFilePath { get; set; } = "";
+
+    public string WebhookSharedSecret { get; set; } = "";
 
     public CheckoutProviderOptions Provider { get; set; } = new();
 }

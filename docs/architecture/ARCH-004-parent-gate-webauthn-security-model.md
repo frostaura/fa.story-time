@@ -27,6 +27,7 @@ Parent settings and subscription upgrades require strong parental control. A wea
 - Parent-only actions gain replay-resistant and origin-aware verification.
 - Integration and unit tests can directly validate mismatch/replay rejection cases.
 - Frontend must implement passkey UX and assertion transport handling.
+- Local-development UX must be explicit about the supported relying-party host story: `localhost` is the supported passkey origin, while unsupported hosts such as `127.0.0.1` should fail early with setup guidance instead of attempting a broken ceremony.
 
 ## Affected Components
 - `src/backend/StoryTime.Api/Services/ParentSettingsService.cs`

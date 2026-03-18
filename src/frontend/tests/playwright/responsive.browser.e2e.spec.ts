@@ -31,7 +31,7 @@ for (const viewport of viewports) {
     )
 
     await page.getByRole('button', { name: 'Generate story' }).click()
-    await expect(page.getByText('Ari and the Moonlit Meadow')).toBeVisible()
+    await expect(page.getByTestId('recent-story-playwright-story-1')).toContainText('Ari and the Moonlit Meadow')
 
     const postGenerateOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
     expect(postGenerateOverflow).toBeTruthy()

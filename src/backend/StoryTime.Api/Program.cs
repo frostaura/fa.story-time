@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using StoryTime.Api;
@@ -81,10 +83,16 @@ app.MapGet(apiRoutes.HomeStatus, (IOptions<StoryTimeOptions> options) =>
 });
 
 app.MapPost(apiRoutes.SubscriptionWebhook, (
+    HttpRequest httpRequest,
     SubscriptionWebhookRequest request,
     ISubscriptionPolicyService subscriptions,
     IOptions<StoryTimeOptions> options) =>
 {
+    if (!IsWebhookAuthorized(httpRequest, options.Value.Checkout.WebhookSharedSecret))
+    {
+        return Results.Unauthorized();
+    }
+
     var applied = subscriptions.ApplyWebhook(request.SoftUserId, request.Tier, request.ResetCooldown);
     return applied
         ? Results.Ok()
@@ -114,7 +122,10 @@ app.MapPost(apiRoutes.SubscriptionCheckoutSession, (
         return Results.Unauthorized();
     }
 
-    var session = subscriptions.CreateCheckoutSession(softUserId, request.UpgradeTier, DateTimeOffset.UtcNow);
+    var returnUrl = string.IsNullOrWhiteSpace(request.ReturnUrl)
+        ? options.Value.Checkout.DefaultReturnUrl
+        : request.ReturnUrl;
+    var session = subscriptions.CreateCheckoutSession(softUserId, request.UpgradeTier, returnUrl, DateTimeOffset.UtcNow);
     return session is null
         ? Results.BadRequest(new { error = options.Value.Messages.UnableToCreateCheckoutSession })
         : Results.Ok(new SubscriptionCheckoutSessionResponse(
@@ -193,12 +204,13 @@ app.MapPost(apiRoutes.ParentGateVerify, (string softUserId, ParentGateVerifyRequ
         : Results.Ok(new ParentGateVerifyResponse(session.GateToken, session.ExpiresAt));
 });
 
-app.MapGet(apiRoutes.ParentSettings, (string softUserId, string gateToken, IParentSettingsService parentSettings) =>
+app.MapGet(apiRoutes.ParentSettings, (string softUserId, HttpRequest httpRequest, IParentSettingsService parentSettings) =>
 {
+    var gateToken = ResolveGateToken(httpRequest);
     var settings = parentSettings.GetSettings(softUserId, gateToken, DateTimeOffset.UtcNow);
     return settings is null
         ? Results.Unauthorized()
-        : Results.Ok(new ParentSettingsResponse(settings.NotificationsEnabled, settings.AnalyticsEnabled));
+        : Results.Ok(new ParentSettingsResponse(settings.NotificationsEnabled, settings.AnalyticsEnabled, settings.KidShelfEnabled));
 });
 
 app.MapPut(apiRoutes.ParentSettings, (string softUserId, ParentSettingsUpdateRequest request, IParentSettingsService parentSettings) =>
@@ -208,11 +220,12 @@ app.MapPut(apiRoutes.ParentSettings, (string softUserId, ParentSettingsUpdateReq
         request.GateToken,
         request.NotificationsEnabled,
         request.AnalyticsEnabled,
+        request.KidShelfEnabled,
         DateTimeOffset.UtcNow);
 
     return settings is null
         ? Results.Unauthorized()
-        : Results.Ok(new ParentSettingsResponse(settings.NotificationsEnabled, settings.AnalyticsEnabled));
+        : Results.Ok(new ParentSettingsResponse(settings.NotificationsEnabled, settings.AnalyticsEnabled, settings.KidShelfEnabled));
 });
 
 app.MapPost(apiRoutes.StoriesGenerate, async (
@@ -244,7 +257,7 @@ app.MapPost(apiRoutes.StoriesGenerate, async (
     {
         if (decision.StatusCode == StatusCodes.Status402PaymentRequired)
         {
-            var paywall = subscriptions.GetPaywallInfo(request.SoftUserId);
+            var paywall = subscriptions.GetPaywallInfo(request.SoftUserId, request.DurationMinutes);
             return Results.Json(
                 new
                 {
@@ -299,9 +312,18 @@ app.MapPost(apiRoutes.StoriesGenerate, async (
     }
 });
 
-app.MapPost(apiRoutes.StoryApprove, (string storyId, IStoryCatalog catalog) =>
+app.MapPost(apiRoutes.StoryApprove, (
+    string storyId,
+    StoryApprovalRequest request,
+    IParentSettingsService parentSettings,
+    IStoryCatalog catalog) =>
 {
-    var approved = catalog.SetApproval(storyId);
+    if (!parentSettings.IsGateAuthorized(request.SoftUserId, request.GateToken, DateTimeOffset.UtcNow))
+    {
+        return Results.Unauthorized();
+    }
+
+    var approved = catalog.SetApproval(request.SoftUserId, storyId);
     return approved is null
         ? Results.NotFound()
         : Results.Ok(new StoryApprovalResponse(FullAudioReady: true, FullAudio: approved.FullAudio));
@@ -313,17 +335,18 @@ app.MapPut(apiRoutes.StoryFavorite, (string storyId, SetFavoriteRequest request,
     return updated ? Results.Ok() : Results.NotFound();
 });
 
-app.MapGet(apiRoutes.Library, (string softUserId, bool kidMode, IStoryCatalog catalog, IOptions<StoryTimeOptions> options) =>
+app.MapGet(apiRoutes.Library, (string softUserId, IStoryCatalog catalog, IParentSettingsService parentSettings, IOptions<StoryTimeOptions> options) =>
 {
+    var kidShelfEnabled = parentSettings.IsKidShelfEnabled(softUserId);
     IReadOnlyList<StoryLibraryItem> recent = catalog.GetRecent(softUserId);
     IReadOnlyList<StoryLibraryItem> favorites = catalog.GetFavorites(softUserId);
-    if (kidMode)
+    if (kidShelfEnabled)
     {
         recent = recent.Take(Math.Max(1, options.Value.Catalog.KidShelfRecentLimit)).ToArray();
         favorites = favorites.Take(Math.Max(1, options.Value.Catalog.KidShelfFavoritesLimit)).ToArray();
     }
 
-    return Results.Ok(new LibraryResponse(recent, favorites, kidMode));
+    return Results.Ok(new LibraryResponse(recent, favorites, kidShelfEnabled));
 });
 
 app.MapGet(apiRoutes.LibraryStorageAudit, (string softUserId, IStoryCatalog catalog, IOptions<StoryTimeOptions> options) =>
@@ -453,6 +476,44 @@ static bool IsNarrativeText(string text, int minWords, IReadOnlyList<string> nar
 
     var wordCount = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
     return wordCount >= minWords;
+}
+
+static bool IsWebhookAuthorized(HttpRequest request, string configuredSecret)
+{
+    if (string.IsNullOrWhiteSpace(configuredSecret))
+    {
+        return false;
+    }
+
+    if (!request.Headers.TryGetValue("X-StoryTime-Webhook-Secret", out var providedValues))
+    {
+        return false;
+    }
+
+    var providedSecret = providedValues.ToString();
+    if (string.IsNullOrWhiteSpace(providedSecret))
+    {
+        return false;
+    }
+
+    var expectedBytes = Encoding.UTF8.GetBytes(configuredSecret);
+    var providedBytes = Encoding.UTF8.GetBytes(providedSecret);
+    return expectedBytes.Length == providedBytes.Length &&
+        CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes);
+}
+
+static string ResolveGateToken(HttpRequest request)
+{
+    if (request.Headers.TryGetValue("X-StoryTime-Gate-Token", out var headerValues))
+    {
+        var headerToken = headerValues.ToString().Trim();
+        if (!string.IsNullOrWhiteSpace(headerToken))
+        {
+            return headerToken;
+        }
+    }
+
+    return string.Empty;
 }
 
 public partial class Program;

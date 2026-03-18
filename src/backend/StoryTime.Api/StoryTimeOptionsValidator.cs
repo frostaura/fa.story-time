@@ -43,12 +43,6 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
             errors.Add("StoryTime:Generation:ContinuityFactRetentionLimit must be greater than zero.");
         }
 
-        if (options.Generation.PersistSeriesStoryBible &&
-            string.IsNullOrWhiteSpace(options.Generation.StoryBibleFilePath))
-        {
-            errors.Add("StoryTime:Generation:StoryBibleFilePath is required when PersistSeriesStoryBible is enabled.");
-        }
-
         if (options.Generation.TeaserDurationSeconds <= 0 || options.Generation.FullDurationSeconds <= 0)
         {
             errors.Add("StoryTime:Generation audio durations must be greater than zero.");
@@ -241,6 +235,11 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
             errors.Add("StoryTime:ParentGate:AssertionType is required.");
         }
 
+        if (string.IsNullOrWhiteSpace(options.ParentGate.StateFilePath))
+        {
+            errors.Add("StoryTime:ParentGate:StateFilePath is required.");
+        }
+
         ValidateCorsOptions(options.Cors, errors);
 
         if (options.Catalog.RecentItemsLimit <= 0 ||
@@ -303,7 +302,6 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
         }
 
         if (string.IsNullOrWhiteSpace(options.Checkout.DefaultTier) ||
-            string.IsNullOrWhiteSpace(options.Checkout.UpgradeTier) ||
             string.IsNullOrWhiteSpace(options.Checkout.UpgradeUrl))
         {
             errors.Add("StoryTime:Checkout values are required.");
@@ -312,14 +310,70 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
         {
             errors.Add("StoryTime:Checkout:DefaultTier must match one of the configured StoryTime:TierLimits keys.");
         }
-        else if (!options.TierLimits.ContainsKey(options.Checkout.UpgradeTier))
+
+        if (options.TierLimits.Count == 0)
         {
-            errors.Add("StoryTime:Checkout:UpgradeTier must match one of the configured StoryTime:TierLimits keys.");
+            errors.Add("StoryTime:TierLimits must define at least one tier.");
+        }
+
+        foreach (var (tier, limits) in options.TierLimits)
+        {
+            if (string.IsNullOrWhiteSpace(tier))
+            {
+                errors.Add("StoryTime:TierLimits cannot contain a blank tier key.");
+                continue;
+            }
+
+            if (limits.Concurrency <= 0)
+            {
+                errors.Add($"StoryTime:TierLimits:{tier}:Concurrency must be greater than zero.");
+            }
+
+            if (limits.CooldownMinutes < 0)
+            {
+                errors.Add($"StoryTime:TierLimits:{tier}:CooldownMinutes must be zero or greater.");
+            }
+
+            if (limits.MaxDurationMinutes <= 0)
+            {
+                errors.Add($"StoryTime:TierLimits:{tier}:MaxDurationMinutes must be greater than zero.");
+            }
+        }
+
+        var tierOrder = options.Checkout.TierOrder
+            .Where(tier => !string.IsNullOrWhiteSpace(tier))
+            .Select(tier => tier.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (tierOrder.Length < 2)
+        {
+            errors.Add("StoryTime:Checkout:TierOrder must define at least two tiers.");
+        }
+        else
+        {
+            if (!string.Equals(tierOrder[0], options.Checkout.DefaultTier, StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add("StoryTime:Checkout:TierOrder must start with StoryTime:Checkout:DefaultTier.");
+            }
+
+            foreach (var tier in tierOrder)
+            {
+                if (!options.TierLimits.ContainsKey(tier))
+                {
+                    errors.Add($"StoryTime:Checkout:TierOrder contains unsupported tier '{tier}'.");
+                }
+            }
         }
 
         if (options.Checkout.SessionTtlMinutes <= 0)
         {
             errors.Add("StoryTime:Checkout:SessionTtlMinutes must be greater than zero.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Checkout.StateFilePath))
+        {
+            errors.Add("StoryTime:Checkout:StateFilePath is required.");
         }
 
         var checkoutProviderMode = options.Checkout.Provider.Mode.Trim();

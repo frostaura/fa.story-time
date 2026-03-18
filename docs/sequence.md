@@ -26,14 +26,15 @@ sequenceDiagram
   participant UI as Frontend App
   participant API as StoryTime API
   participant Gen as StoryGenerationService
-  participant Bible as StoryBible State
+  participant LS as LocalStorage
 
-  UI->>API: POST /api/stories/generate (mode=series, seriesId)
+  UI->>LS: Read stored Story Bible snapshot
+  UI->>API: POST /api/stories/generate (mode=series, seriesId, storyBible)
   API->>Gen: Continue series flow
-  Gen->>Bible: Load and merge continuity facts
-  Bible-->>Gen: Prior arc context
-  Gen-->>API: Continuation with recap + updated bible
+  Gen->>Gen: Merge continuity facts from request snapshot
+  Gen-->>API: Continuation with recap + updated Story Bible snapshot
   API-->>UI: Story with stable seriesId
+  UI->>LS: Persist updated Story Bible snapshot
 ```
 
 ## UC-003 Parent Approval
@@ -49,6 +50,8 @@ sequenceDiagram
   UI->>Gate: Create assertion
   UI->>API: POST /api/parent/gate/verify
   API-->>UI: gateToken
+  UI->>API: GET /api/parent/{softUserId}/settings (X-StoryTime-Gate-Token)
+  API-->>UI: parent settings snapshot
   UI->>API: POST /api/stories/{id}/approve
   API-->>UI: fullAudioReady + fullAudio
 ```
@@ -59,10 +62,15 @@ sequenceDiagram
 sequenceDiagram
   participant UI as Frontend App
   participant API as StoryTime API
+  participant Parent as Parent Controls
   participant Catalog as StoryCatalog
+  participant Settings as ParentSettingsService
 
-  UI->>API: GET /api/library/{softUserId}?kidMode=true
+  Parent->>API: PUT /api/parent/{softUserId}/settings (KidShelfEnabled=true)
+  API->>Settings: Persist parent-managed Kid Shelf state
+  UI->>API: GET /api/library/{softUserId}
   API->>Catalog: Read metadata by soft user
+  API->>Settings: Resolve kid shelf enabled state
   Catalog-->>API: recent + favorites metadata
   API-->>UI: Kid-safe shelves only
 ```
@@ -82,7 +90,10 @@ sequenceDiagram
   API-->>UI: 402 + paywall metadata
   UI->>API: POST /api/subscription/checkout/session
   API->>Checkout: Create checkout session
-  Checkout-->>API: sessionId
+  Checkout-->>API: sessionId + checkoutUrl
+  API-->>UI: checkout session response
+  UI->>Checkout: Redirect to checkoutUrl
+  Checkout-->>UI: Return callback with checkoutSessionId + checkout status
   UI->>API: POST /api/subscription/checkout/complete
   API-->>UI: upgraded tier
 ```

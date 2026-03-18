@@ -14,8 +14,8 @@ export const apiRoutes = Object.freeze({
     joinPath(runtimeConfig.apiRoutes.subscriptionBase, `${encodePathSegment(softUserId)}/checkout/session`),
   subscriptionCheckoutComplete: (softUserId: string) =>
     joinPath(runtimeConfig.apiRoutes.subscriptionBase, `${encodePathSegment(softUserId)}/checkout/complete`),
-  library: (softUserId: string, kidMode: boolean) =>
-    `${joinPath(runtimeConfig.apiRoutes.libraryBase, encodePathSegment(softUserId))}?kidMode=${String(kidMode)}`,
+  library: (softUserId: string) =>
+    joinPath(runtimeConfig.apiRoutes.libraryBase, encodePathSegment(softUserId)),
   storyFavorite: (storyId: string) =>
     joinPath(runtimeConfig.apiRoutes.storiesBase, `${encodePathSegment(storyId)}/favorite`),
   storyApprove: (storyId: string) =>
@@ -28,8 +28,6 @@ export const apiRoutes = Object.freeze({
     joinPath(runtimeConfig.apiRoutes.parentBase, `${encodePathSegment(softUserId)}/gate/verify`),
   parentSettings: (softUserId: string) =>
     joinPath(runtimeConfig.apiRoutes.parentBase, `${encodePathSegment(softUserId)}/settings`),
-  parentSettingsWithToken: (softUserId: string, gateToken: string) =>
-    `${joinPath(runtimeConfig.apiRoutes.parentBase, `${encodePathSegment(softUserId)}/settings`)}?gateToken=${encodeURIComponent(gateToken)}`,
 })
 
 export const buildApiUrl = (apiBaseUrl: string, path: string): string => {

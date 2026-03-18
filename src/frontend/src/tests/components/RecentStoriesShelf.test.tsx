@@ -46,6 +46,21 @@ describe('RecentStoriesShelf', () => {
     expect(screen.getByRole('button', { name: 'Favorite' })).toBeInTheDocument()
   })
 
+  it('renders a compact empty shelf state', () => {
+    render(
+      <RecentStoriesShelf
+        getLayerStyle={() => ({})}
+        onApproveStory={() => {}}
+        onToggleFavorite={() => {}}
+        stories={[]}
+        ui={ui}
+      />,
+    )
+
+    expect(screen.getByTestId('recent-stories-shelf')).toHaveAttribute('data-empty', 'true')
+    expect(screen.getByText('Generate your first bedtime adventure!')).toBeInTheDocument()
+  })
+
   it('invokes approve and favorite callbacks', async () => {
     const onApproveStory = vi.fn()
     const onToggleFavorite = vi.fn()

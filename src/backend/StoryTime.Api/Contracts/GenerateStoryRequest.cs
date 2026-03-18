@@ -1,3 +1,5 @@
+using StoryTime.Api.Domain;
+
 namespace StoryTime.Api.Contracts;
 
 public sealed record GenerateStoryRequest(
@@ -9,7 +11,8 @@ public sealed record GenerateStoryRequest(
     bool? ApprovalRequired,
     bool Favorite,
     bool ReducedMotion = false,
-    OneShotCustomizationRequest? Customization = null);
+    OneShotCustomizationRequest? Customization = null,
+    StoryBibleSnapshot? StoryBible = null);
 
 public sealed record OneShotCustomizationRequest(
     string? ArcName,

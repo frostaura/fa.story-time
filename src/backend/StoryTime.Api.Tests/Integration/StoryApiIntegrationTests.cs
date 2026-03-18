@@ -19,10 +19,9 @@ namespace StoryTime.Api.Tests.Integration;
 
 public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly HttpClient _client = factory
-        .WithWebHostBuilder(builder =>
-            builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false"))
-        .CreateClient();
+    private const string TestWebhookSecret = "storytime-local-webhook-secret";
+    private const string CheckoutReturnUrl = "https://storytime.example.com/checkout";
+    private readonly HttpClient _client = CreateConfiguredClient(factory);
 
     [Fact]
     public async Task HomeStatus_IsQuickGenerateFirst()
@@ -34,7 +33,7 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         Assert.True(response.DurationSliderVisible);
         Assert.Equal(5, response.DurationMinMinutes);
         Assert.Equal(15, response.DurationMaxMinutes);
-        Assert.Equal("Dreamer", response.DefaultChildName);
+        Assert.Equal("Child", response.DefaultChildName);
         Assert.True(response.ParentControlsEnabled);
         Assert.Equal("Trial", response.DefaultTier);
         Assert.Equal("a gentle friend", response.OneShotDefaults.CompanionName);
@@ -45,13 +44,13 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
     public async Task CorsPolicy_AllowsConfiguredFrontendOrigin()
     {
         using var request = new HttpRequestMessage(HttpMethod.Options, "/api/home/status");
-        request.Headers.Add("Origin", "http://localhost:5173");
+        request.Headers.Add("Origin", "http://localhost:4173");
         request.Headers.Add("Access-Control-Request-Method", "GET");
 
         using var response = await _client.SendAsync(request);
 
         Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Origin", out var values));
-        Assert.Contains("http://localhost:5173", values);
+        Assert.Contains("http://localhost:4173", values);
         Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Methods", out var methods));
         Assert.Contains("GET", string.Join(",", methods), StringComparison.OrdinalIgnoreCase);
     }
@@ -69,6 +68,33 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
     }
 
     [Fact]
+    public async Task CorsPolicy_DoesNotGrantUnsupportedMethod()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/home/status");
+        request.Headers.Add("Origin", "http://localhost:5173");
+        request.Headers.Add("Access-Control-Request-Method", "DELETE");
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Methods", out var methods));
+        Assert.DoesNotContain("DELETE", string.Join(",", methods), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CorsPolicy_AllowsParentGateTokenHeaderForConfiguredFrontendOrigin()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/parent/user/settings");
+        request.Headers.Add("Origin", "http://localhost:5173");
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+        request.Headers.Add("Access-Control-Request-Headers", "X-StoryTime-Gate-Token");
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Headers", out var headers));
+        Assert.Contains("X-StoryTime-Gate-Token", string.Join(",", headers), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task StoryFavorite_DeleteVerbIsRejected()
     {
         using var response = await _client.DeleteAsync("/api/stories/story-id/favorite");
@@ -79,6 +105,12 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
     [Fact]
     public async Task GenerateThenApprove_SucceedsAndTracksFavoriteInLibrary()
     {
+        var gateToken = await CreateGateTokenAsync("user-library");
+        using var settingsResponse = await _client.PutAsJsonAsync(
+            "/api/parent/user-library/settings",
+            new ParentSettingsUpdateRequest(gateToken, NotificationsEnabled: true, AnalyticsEnabled: true, KidShelfEnabled: true));
+        settingsResponse.EnsureSuccessStatusCode();
+
         var request = new GenerateStoryRequest("user-library", "Ari", "series", 6, null, null, true, ReducedMotion: true);
         using var generateResult = await _client.PostAsJsonAsync("/api/stories/generate", request);
 
@@ -96,17 +128,19 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         using var favoriteResult = await _client.PutAsJsonAsync($"/api/stories/{generated.StoryId}/favorite", new SetFavoriteRequest(true));
         favoriteResult.EnsureSuccessStatusCode();
 
-        using var approveResult = await _client.PostAsync($"/api/stories/{generated.StoryId}/approve", content: null);
+        using var approveResult = await _client.PostAsJsonAsync(
+            $"/api/stories/{generated.StoryId}/approve",
+            new StoryApprovalRequest("user-library", gateToken));
         approveResult.EnsureSuccessStatusCode();
         var approval = await approveResult.Content.ReadFromJsonAsync<StoryApprovalResponse>();
         Assert.NotNull(approval);
         Assert.True(approval!.FullAudioReady);
         Assert.StartsWith("data:audio/wav;base64,", approval.FullAudio);
 
-        var library = await _client.GetFromJsonAsync<LibraryResponse>("/api/library/user-library?kidMode=true");
+        var library = await _client.GetFromJsonAsync<LibraryResponse>("/api/library/user-library");
 
         Assert.NotNull(library);
-        Assert.True(library!.KidModeEnabled);
+        Assert.True(library!.KidShelfEnabled);
         Assert.NotEmpty(library.Recent);
         Assert.NotEmpty(library.Favorites);
         Assert.All(library.Recent, item => Assert.DoesNotContain("Ari", item.Title, StringComparison.OrdinalIgnoreCase));
@@ -131,15 +165,25 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
             generated.EnsureSuccessStatusCode();
         }
 
-        var nonKid = await _client.GetFromJsonAsync<LibraryResponse>($"/api/library/{userId}?kidMode=false");
-        var kid = await _client.GetFromJsonAsync<LibraryResponse>($"/api/library/{userId}?kidMode=true");
+        var beforeKidShelf = await _client.GetFromJsonAsync<LibraryResponse>($"/api/library/{userId}");
+        Assert.NotNull(beforeKidShelf);
+        Assert.True(beforeKidShelf!.Recent.Count > 8);
+        Assert.True(beforeKidShelf.Favorites.Count > 8);
 
-        Assert.NotNull(nonKid);
+        var gateToken = await CreateGateTokenAsync(userId);
+        using var updateSettings = await _client.PutAsJsonAsync(
+            $"/api/parent/{userId}/settings",
+            new ParentSettingsUpdateRequest(gateToken, NotificationsEnabled: false, AnalyticsEnabled: false, KidShelfEnabled: true));
+        updateSettings.EnsureSuccessStatusCode();
+
+        var kid = await _client.GetFromJsonAsync<LibraryResponse>($"/api/library/{userId}");
+
         Assert.NotNull(kid);
-        Assert.True(nonKid!.Recent.Count > kid!.Recent.Count);
-        Assert.True(nonKid.Favorites.Count > kid.Favorites.Count);
+        Assert.True(kid!.KidShelfEnabled);
         Assert.True(kid.Recent.Count <= 8);
         Assert.True(kid.Favorites.Count <= 8);
+        Assert.True(beforeKidShelf.Recent.Count > kid.Recent.Count);
+        Assert.True(beforeKidShelf.Favorites.Count > kid.Favorites.Count);
     }
 
     [Fact]
@@ -167,33 +211,75 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         var gate = await verifyResponse.Content.ReadFromJsonAsync<ParentGateVerifyResponse>();
         Assert.NotNull(gate);
 
-        var settings = await _client.GetFromJsonAsync<ParentSettingsResponse>($"/api/parent/parent-user/settings?gateToken={gate!.GateToken}");
+        using var settingsRequest = new HttpRequestMessage(HttpMethod.Get, "/api/parent/parent-user/settings");
+        settingsRequest.Headers.Add("X-StoryTime-Gate-Token", gate.GateToken);
+        using var settingsResponse = await _client.SendAsync(settingsRequest);
+        settingsResponse.EnsureSuccessStatusCode();
+        var settings = await settingsResponse.Content.ReadFromJsonAsync<ParentSettingsResponse>();
         Assert.NotNull(settings);
 
         using var updateResponse = await _client.PutAsJsonAsync(
             "/api/parent/parent-user/settings",
-            new ParentSettingsUpdateRequest(gate.GateToken, NotificationsEnabled: true, AnalyticsEnabled: true));
+            new ParentSettingsUpdateRequest(gate.GateToken, NotificationsEnabled: true, AnalyticsEnabled: true, KidShelfEnabled: true));
         updateResponse.EnsureSuccessStatusCode();
 
         var updated = await updateResponse.Content.ReadFromJsonAsync<ParentSettingsResponse>();
         Assert.NotNull(updated);
         Assert.True(updated!.NotificationsEnabled);
         Assert.True(updated.AnalyticsEnabled);
+        Assert.True(updated.KidShelfEnabled);
     }
 
     [Fact]
-    public async Task CheckoutFlow_RequiresParentGate_AndUpgradesTier()
+    public async Task ParentSettings_QueryGateTokenIsRejected_WhenHeaderIsMissing()
+    {
+        const string userId = "parent-user-query-token";
+        var gateToken = await CreateGateTokenAsync(userId);
+
+        using var response = await _client.GetAsync($"/api/parent/{userId}/settings?gateToken={gateToken}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ParentSettings_VerificationAcceptsLocalhostDevelopmentPortOrigin()
+    {
+        var (credentialId, publicKey, privateKey) = CreateCredentialPair();
+        using var registerResponse = await _client.PostAsJsonAsync(
+            "/api/parent/parent-user-port/gate/register",
+            new ParentCredentialRegisterRequest(credentialId, publicKey));
+        registerResponse.EnsureSuccessStatusCode();
+
+        using var challengeResponse = await _client.PostAsync("/api/parent/parent-user-port/gate/challenge", null);
+        challengeResponse.EnsureSuccessStatusCode();
+
+        var challenge = await challengeResponse.Content.ReadFromJsonAsync<ParentGateChallengeResponse>();
+        Assert.NotNull(challenge);
+
+        using var verifyResponse = await _client.PostAsJsonAsync(
+            "/api/parent/parent-user-port/gate/verify",
+            new ParentGateVerifyRequest(
+                challenge!.ChallengeId,
+                BuildAssertion(challenge.Challenge, credentialId, privateKey, origin: "http://localhost:5173")));
+        verifyResponse.EnsureSuccessStatusCode();
+
+        var gate = await verifyResponse.Content.ReadFromJsonAsync<ParentGateVerifyResponse>();
+        Assert.NotNull(gate);
+    }
+
+    [Fact]
+    public async Task CheckoutFlow_RequiresParentGate_AndUpgradesThroughPlusThenPremium()
     {
         const string userId = "user-checkout-flow";
         var gateToken = await CreateGateTokenAsync(userId);
 
         using var createCheckout = await _client.PostAsJsonAsync(
             $"/api/subscription/{userId}/checkout/session",
-            new SubscriptionCheckoutSessionRequest(gateToken, "Premium"));
+            new SubscriptionCheckoutSessionRequest(gateToken, null, CheckoutReturnUrl));
         createCheckout.EnsureSuccessStatusCode();
         var checkoutSession = await createCheckout.Content.ReadFromJsonAsync<SubscriptionCheckoutSessionResponse>();
         Assert.NotNull(checkoutSession);
-        Assert.Equal("Premium", checkoutSession!.UpgradeTier);
+        Assert.Equal("Plus", checkoutSession!.UpgradeTier);
 
         using var completeCheckout = await _client.PostAsJsonAsync(
             $"/api/subscription/{userId}/checkout/complete",
@@ -201,12 +287,33 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         completeCheckout.EnsureSuccessStatusCode();
         var completion = await completeCheckout.Content.ReadFromJsonAsync<SubscriptionCheckoutCompleteResponse>();
         Assert.NotNull(completion);
-        Assert.Equal("Premium", completion!.CurrentTier);
+        Assert.Equal("Plus", completion!.CurrentTier);
 
         using var upgradedGeneration = await _client.PostAsJsonAsync(
             "/api/stories/generate",
-            new GenerateStoryRequest(userId, "Kai", "series", 15, null, null, false));
+            new GenerateStoryRequest(userId, "Kai", "series", 12, null, null, false));
         upgradedGeneration.EnsureSuccessStatusCode();
+
+        using var secondCheckout = await _client.PostAsJsonAsync(
+            $"/api/subscription/{userId}/checkout/session",
+            new SubscriptionCheckoutSessionRequest(gateToken, null, CheckoutReturnUrl));
+        secondCheckout.EnsureSuccessStatusCode();
+        var secondSession = await secondCheckout.Content.ReadFromJsonAsync<SubscriptionCheckoutSessionResponse>();
+        Assert.NotNull(secondSession);
+        Assert.Equal("Premium", secondSession!.UpgradeTier);
+
+        using var completePremiumCheckout = await _client.PostAsJsonAsync(
+            $"/api/subscription/{userId}/checkout/complete",
+            new SubscriptionCheckoutCompleteRequest(gateToken, secondSession.SessionId));
+        completePremiumCheckout.EnsureSuccessStatusCode();
+        var premiumCompletion = await completePremiumCheckout.Content.ReadFromJsonAsync<SubscriptionCheckoutCompleteResponse>();
+        Assert.NotNull(premiumCompletion);
+        Assert.Equal("Premium", premiumCompletion!.CurrentTier);
+
+        using var premiumGeneration = await _client.PostAsJsonAsync(
+            "/api/stories/generate",
+            new GenerateStoryRequest(userId, "Kai", "series", 15, null, null, false));
+        premiumGeneration.EnsureSuccessStatusCode();
     }
 
     [Fact]
@@ -217,13 +324,48 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
 
         using var missingGate = await _client.PostAsJsonAsync(
             $"/api/subscription/{userId}/checkout/session",
-            new SubscriptionCheckoutSessionRequest("missing-gate-token", "Premium"));
+            new SubscriptionCheckoutSessionRequest("missing-gate-token", "Plus", CheckoutReturnUrl));
         Assert.Equal(HttpStatusCode.Unauthorized, missingGate.StatusCode);
 
         using var crossUserGate = await _client.PostAsJsonAsync(
             $"/api/subscription/{userId}/checkout/session",
-            new SubscriptionCheckoutSessionRequest(validGateToken, "Premium"));
+            new SubscriptionCheckoutSessionRequest(validGateToken, "Plus", CheckoutReturnUrl));
         Assert.Equal(HttpStatusCode.Unauthorized, crossUserGate.StatusCode);
+    }
+
+    [Fact]
+    public async Task CheckoutFlow_RejectsUnknownUpgradeTier()
+    {
+        const string userId = "user-checkout-tier-order";
+        var gateToken = await CreateGateTokenAsync(userId);
+
+        using var createCheckout = await _client.PostAsJsonAsync(
+            $"/api/subscription/{userId}/checkout/session",
+            new SubscriptionCheckoutSessionRequest(gateToken, "Ultimate", CheckoutReturnUrl));
+
+        Assert.Equal(HttpStatusCode.BadRequest, createCheckout.StatusCode);
+    }
+
+    [Fact]
+    public async Task CheckoutFlow_UsesConfiguredDefaultReturnUrl_WhenRequestOmitsIt()
+    {
+        using var client = CreateConfiguredClient(factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("StoryTime:Checkout:DefaultReturnUrl", CheckoutReturnUrl);
+        }));
+
+        const string userId = "user-checkout-default-return-url";
+        var gateToken = await CreateGateTokenAsync(client, userId);
+
+        using var createCheckout = await client.PostAsJsonAsync(
+            $"/api/subscription/{userId}/checkout/session",
+            new SubscriptionCheckoutSessionRequest(gateToken, "Plus"));
+
+        createCheckout.EnsureSuccessStatusCode();
+        var checkoutSession = await createCheckout.Content.ReadFromJsonAsync<SubscriptionCheckoutSessionResponse>();
+
+        Assert.NotNull(checkoutSession);
+        Assert.StartsWith(CheckoutReturnUrl, checkoutSession!.CheckoutUrl, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -241,9 +383,8 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
     [Fact]
     public async Task CheckoutComplete_ReturnsBadRequestForExpiredSession()
     {
-        using var client = factory.WithWebHostBuilder(builder =>
+        using var client = CreateConfiguredClient(factory.WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false");
             builder.UseSetting("StoryTime:Checkout:Provider:Mode", "External");
             builder.UseSetting("StoryTime:Checkout:Provider:LocalFallbackEnabled", "false");
             builder.UseSetting("StoryTime:Checkout:Provider:Endpoint", "https://payments.storytime.test/storytime/checkout");
@@ -252,14 +393,14 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
                 services.AddHttpClient(nameof(SubscriptionPolicyService))
                     .ConfigurePrimaryHttpMessageHandler(() => new ExpiredCheckoutProviderHandler());
             });
-        }).CreateClient();
+        }));
 
         const string userId = "user-checkout-expired-session";
         var gateToken = await CreateGateTokenAsync(client, userId);
 
         using var createCheckout = await client.PostAsJsonAsync(
             $"/api/subscription/{userId}/checkout/session",
-            new SubscriptionCheckoutSessionRequest(gateToken, "Premium"));
+            new SubscriptionCheckoutSessionRequest(gateToken, "Plus", CheckoutReturnUrl));
         createCheckout.EnsureSuccessStatusCode();
         var checkoutSession = await createCheckout.Content.ReadFromJsonAsync<SubscriptionCheckoutSessionResponse>();
         Assert.NotNull(checkoutSession);
@@ -271,9 +412,35 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
     }
 
     [Fact]
+    public async Task CheckoutSession_ReturnsServerErrorWhenExternalProviderFailsWithoutFallback()
+    {
+        using var client = CreateConfiguredClient(factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("StoryTime:Checkout:Provider:Mode", "External");
+            builder.UseSetting("StoryTime:Checkout:Provider:LocalFallbackEnabled", "false");
+            builder.UseSetting("StoryTime:Checkout:Provider:Endpoint", "https://payments.storytime.test/storytime/checkout");
+            builder.ConfigureServices(services =>
+            {
+                services.AddHttpClient(nameof(SubscriptionPolicyService))
+                    .ConfigurePrimaryHttpMessageHandler(() => new FailingCheckoutProviderHandler());
+            });
+        }));
+
+        const string userId = "user-checkout-provider-failure";
+        var gateToken = await CreateGateTokenAsync(client, userId);
+
+        using var createCheckout = await client.PostAsJsonAsync(
+            $"/api/subscription/{userId}/checkout/session",
+            new SubscriptionCheckoutSessionRequest(gateToken, "Plus", CheckoutReturnUrl));
+
+        Assert.Equal(HttpStatusCode.InternalServerError, createCheckout.StatusCode);
+    }
+
+    [Fact]
     public async Task GenerateApproveLibraryFlow_RemainsStableAcrossRepeatedRuns()
     {
         const string userId = "user-repeated-readiness";
+        var gateToken = await CreateGateTokenAsync(userId);
         for (var iteration = 0; iteration < 3; iteration++)
         {
             using var webhook = await _client.PostAsJsonAsync(
@@ -288,10 +455,12 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
             var generated = await generatedResponse.Content.ReadFromJsonAsync<GenerateStoryResponse>();
             Assert.NotNull(generated);
 
-            using var approve = await _client.PostAsync($"/api/stories/{generated!.StoryId}/approve", content: null);
+            using var approve = await _client.PostAsJsonAsync(
+                $"/api/stories/{generated!.StoryId}/approve",
+                new StoryApprovalRequest(userId, gateToken));
             approve.EnsureSuccessStatusCode();
 
-            var library = await _client.GetFromJsonAsync<LibraryResponse>($"/api/library/{userId}?kidMode=false");
+            var library = await _client.GetFromJsonAsync<LibraryResponse>($"/api/library/{userId}");
             Assert.NotNull(library);
             Assert.Contains(library!.Recent, item => item.StoryId == generated.StoryId);
         }
@@ -356,10 +525,10 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
 
         Assert.NotNull(paywall);
         Assert.Equal("Trial", paywall!.CurrentTier);
-        Assert.Equal("Premium", paywall.UpgradeTier);
+        Assert.Equal("Plus", paywall.UpgradeTier);
         Assert.Equal(10, paywall.MaxDurationMinutes);
         Assert.Equal("/subscribe", paywall.UpgradeUrl);
-        Assert.Contains("Premium", paywall.Message);
+        Assert.Contains("Plus", paywall.Message);
     }
 
     [Fact]
@@ -379,6 +548,23 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
     }
 
     [Fact]
+    public async Task SubscriptionPaywall_RecommendsPremiumForPlusTier()
+    {
+        const string userId = "user-paywall-plus";
+        using var webhook = await _client.PostAsJsonAsync(
+            "/api/subscription/webhook",
+            new SubscriptionWebhookRequest(userId, "Plus", true));
+        webhook.EnsureSuccessStatusCode();
+
+        var paywall = await _client.GetFromJsonAsync<SubscriptionPaywallResponse>($"/api/subscription/{userId}/paywall");
+
+        Assert.NotNull(paywall);
+        Assert.Equal("Plus", paywall!.CurrentTier);
+        Assert.Equal("Premium", paywall.UpgradeTier);
+        Assert.Equal(12, paywall.MaxDurationMinutes);
+    }
+
+    [Fact]
     public async Task NonApprovalFlow_DoesNotPersistNarrativeAudioOrLeakage()
     {
         const string userId = "user-non-approval";
@@ -395,7 +581,7 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         Assert.True(generated.FullAudioReady);
         Assert.StartsWith("data:audio/wav;base64,", generated.FullAudio);
 
-        var library = await _client.GetFromJsonAsync<LibraryResponse>($"/api/library/{userId}?kidMode=false");
+        var library = await _client.GetFromJsonAsync<LibraryResponse>($"/api/library/{userId}");
         Assert.NotNull(library);
         Assert.NotEmpty(library!.Recent);
         Assert.All(library.Recent, item => Assert.Null(item.FullAudio));
@@ -405,6 +591,29 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         Assert.False(storageAudit!.ContainsNarrativeText);
         Assert.False(storageAudit.ContainsNarrativeAudioPayload);
         Assert.False(storageAudit.ContainsSemanticNarrativeLeakage);
+    }
+
+    [Fact]
+    public async Task StoryApproval_RejectsMissingOrForeignGateToken()
+    {
+        const string ownerUserId = "user-approval-owner";
+        using var generatedResponse = await _client.PostAsJsonAsync(
+            "/api/stories/generate",
+            new GenerateStoryRequest(ownerUserId, "Ari", "series", 6, null, null, false));
+        generatedResponse.EnsureSuccessStatusCode();
+        var generated = await generatedResponse.Content.ReadFromJsonAsync<GenerateStoryResponse>();
+        Assert.NotNull(generated);
+
+        using var missingGateResponse = await _client.PostAsJsonAsync(
+            $"/api/stories/{generated!.StoryId}/approve",
+            new StoryApprovalRequest(ownerUserId, string.Empty));
+        Assert.Equal(HttpStatusCode.Unauthorized, missingGateResponse.StatusCode);
+
+        var foreignGateToken = await CreateGateTokenAsync("user-approval-foreign");
+        using var foreignGateResponse = await _client.PostAsJsonAsync(
+            $"/api/stories/{generated.StoryId}/approve",
+            new StoryApprovalRequest(ownerUserId, foreignGateToken));
+        Assert.Equal(HttpStatusCode.Unauthorized, foreignGateResponse.StatusCode);
     }
 
     [Fact]
@@ -423,6 +632,7 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         var instrumentedFactory = factory.WithWebHostBuilder(builder =>
         {
             builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false");
+            builder.UseSetting("StoryTime:Generation:AiOrchestration:LocalFallbackEnabled", "false");
             builder.ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
@@ -430,7 +640,7 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
             });
         });
 
-        using var client = instrumentedFactory.CreateClient();
+        using var client = CreateConfiguredClient(instrumentedFactory);
         using var scope = instrumentedFactory.Services.CreateScope();
         var options = scope.ServiceProvider.GetRequiredService<IOptions<StoryTimeOptions>>().Value;
         var request = new GenerateStoryRequest(
@@ -470,13 +680,17 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         Assert.DoesNotContain(entries, entry => entry.Contains(narrationStyle, StringComparison.Ordinal));
     }
 
-    private static ParentGateAssertion BuildAssertion(string challenge, string credentialId, byte[] privateKey)
+    private static ParentGateAssertion BuildAssertion(
+        string challenge,
+        string credentialId,
+        byte[] privateKey,
+        string origin = "http://localhost")
     {
         var clientDataRaw = JsonSerializer.Serialize(new
         {
             type = ParentGateAssertionTypes.WebAuthnGet,
             challenge,
-            origin = "http://localhost"
+            origin
         });
         var clientDataBytes = Encoding.UTF8.GetBytes(clientDataRaw);
         var authenticatorDataBytes = BuildAuthenticatorData("localhost", 1);
@@ -488,7 +702,10 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
 
         using var key = ECDsa.Create();
         key.ImportECPrivateKey(privateKey, out _);
-        var signature = key.SignData(signedPayload, HashAlgorithmName.SHA256);
+        var signature = key.SignData(
+            signedPayload,
+            HashAlgorithmName.SHA256,
+            DSASignatureFormat.Rfc3279DerSequence);
 
         return new ParentGateAssertion(
             CredentialId: credentialId,
@@ -503,7 +720,7 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
         var rpIdHash = SHA256.HashData(Encoding.UTF8.GetBytes(rpId));
         var authenticatorData = new byte[37];
         Buffer.BlockCopy(rpIdHash, 0, authenticatorData, 0, rpIdHash.Length);
-        authenticatorData[32] = 0x01;
+        authenticatorData[32] = 0x05;
         BinaryPrimitives.WriteUInt32BigEndian(authenticatorData.AsSpan(33, 4), signCount);
         return authenticatorData;
     }
@@ -518,6 +735,33 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
     }
 
     private Task<string> CreateGateTokenAsync(string userId) => CreateGateTokenAsync(_client, userId);
+
+    private static HttpClient CreateConfiguredClient(WebApplicationFactory<Program> factory)
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "storytime-api-tests", Guid.NewGuid().ToString("N"));
+        var client = factory
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false");
+                builder.UseSetting("StoryTime:Generation:AiOrchestration:LocalFallbackEnabled", "false");
+                builder.UseSetting("StoryTime:Checkout:WebhookSharedSecret", TestWebhookSecret);
+                builder.UseSetting("StoryTime:Catalog:Provider", "InMemory");
+                builder.UseSetting("StoryTime:Catalog:FilePath", Path.Combine(tempRoot, "catalog.json"));
+                builder.UseSetting("StoryTime:ParentGate:StateFilePath", Path.Combine(tempRoot, "parent-state.json"));
+                builder.UseSetting("StoryTime:Checkout:StateFilePath", Path.Combine(tempRoot, "subscription-state.json"));
+            })
+            .CreateClient();
+        AddWebhookSecret(client);
+        return client;
+    }
+
+    private static void AddWebhookSecret(HttpClient client)
+    {
+        if (!client.DefaultRequestHeaders.Contains("X-StoryTime-Webhook-Secret"))
+        {
+            client.DefaultRequestHeaders.Add("X-StoryTime-Webhook-Secret", TestWebhookSecret);
+        }
+    }
 
     private async Task<string> CreateGateTokenAsync(HttpClient client, string userId)
     {
@@ -552,7 +796,7 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(
-                        """{"sessionId":"expired-session","checkoutUrl":"https://payments.storytime.dev/session/expired-session","expiresAt":"2000-01-01T00:00:00Z","upgradeTier":"Premium"}""",
+                        """{"sessionId":"expired-session","checkoutUrl":"https://payments.storytime.dev/session/expired-session","expiresAt":"2000-01-01T00:00:00Z","upgradeTier":"Plus"}""",
                         Encoding.UTF8,
                         "application/json")
                 });
@@ -563,13 +807,24 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(
-                        """{"success":true,"upgradeTier":"Premium"}""",
+                        """{"success":true,"upgradeTier":"Plus"}""",
                         Encoding.UTF8,
                         "application/json")
                 });
             }
 
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+    }
+
+    private sealed class FailingCheckoutProviderHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadGateway)
+            {
+                Content = new StringContent("provider unavailable")
+            });
         }
     }
 

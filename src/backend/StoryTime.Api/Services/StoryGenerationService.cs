@@ -14,30 +14,11 @@ public sealed class StoryGenerationService(
     IMediaAssetService mediaAssetService,
     IHttpClientFactory httpClientFactory) : IStoryGenerationService
 {
-    private static readonly object StoryBiblePersistenceLock = new();
     private readonly StoryTimeOptions _options = options.Value;
     private readonly MessageTemplateOptions _messages = options.Value.Messages;
     private readonly IMediaAssetService _mediaAssetService = mediaAssetService;
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
-    private readonly bool _persistSeriesStoryBible = options.Value.Generation.PersistSeriesStoryBible;
-    private readonly bool _persistContinuityFacts = options.Value.Generation.PersistContinuityFacts;
     private readonly AiStageNameOptions _aiStageNames = options.Value.Generation.AiOrchestration.StageNames;
-    private readonly string _persistedRecurringCharacterAlias = NormalizePersistentRecurringCharacter(
-        options.Value.Generation.Fallbacks.PersistentRecurringCharacterAlias,
-        options.Value.Ui.DefaultChildName,
-        options.Value.Messages);
-    private readonly string _storyBibleFilePath = ResolveStoryBibleFilePath(options.Value.Generation.StoryBibleFilePath);
-    private readonly ConcurrentDictionary<string, StoryBible> _seriesBibles =
-        LoadStoryBibles(
-            options.Value.Generation.PersistSeriesStoryBible,
-            options.Value.Generation.StoryBibleFilePath,
-            options.Value.Generation.PersistContinuityFacts,
-            NormalizePersistentRecurringCharacter(
-                options.Value.Generation.Fallbacks.PersistentRecurringCharacterAlias,
-                options.Value.Ui.DefaultChildName,
-                options.Value.Messages),
-            options.Value.Generation.NarrativeTemplates.PersistedArcObjective,
-            options.Value.Generation.NarrativeTemplates.PersistedEpisodeSummary);
     private static readonly JsonSerializerOptions OpenRouterStageResponseSerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -54,13 +35,16 @@ public sealed class StoryGenerationService(
         var customization = ResolveOneShotCustomization(mode, request.Customization);
 
         StoryBible? bible = null;
-        var seriesId = request.SeriesId;
+        var seriesId = request.StoryBible?.SeriesId ?? request.SeriesId;
         var recap = "";
 
         if (string.Equals(mode, StoryModes.Series, StringComparison.OrdinalIgnoreCase))
         {
             seriesId = string.IsNullOrWhiteSpace(seriesId) ? Guid.NewGuid().ToString("N") : seriesId.Trim();
-            bible = _seriesBibles.GetOrAdd(seriesId, id => CreateBible(id, protagonist));
+            bible = request.StoryBible is null
+                ? CreateBible(seriesId, protagonist)
+                : CreateBibleFromSnapshot(seriesId, protagonist, request.StoryBible);
+            protagonist = bible.RecurringCharacter;
             recap = string.IsNullOrWhiteSpace(bible.LastEpisodeSummary)
                 ? ApplyTemplate(
                     _options.Generation.NarrativeTemplates.SeriesRecapFirstEpisode,
@@ -90,28 +74,19 @@ public sealed class StoryGenerationService(
         {
             bible.ArcEpisodeNumber += 1;
             bible.ArcObjective = scenePlan.LastOrDefault() ?? bible.ArcObjective;
-            if (_persistContinuityFacts)
-            {
-                bible.ContinuityFacts.Add(ApplyTemplate(
-                    _options.Generation.NarrativeTemplates.ContinuityFact,
-                    new Dictionary<string, string>
-                    {
-                        ["EpisodeNumber"] = bible.ArcEpisodeNumber.ToString(),
-                        ["Timestamp"] = now.ToString("O"),
-                        ["SceneCount"] = sceneCount.ToString()
-                    }));
-                if (bible.ContinuityFacts.Count > _options.Generation.ContinuityFactRetentionLimit)
+            bible.ContinuityFacts.Add(ApplyTemplate(
+                _options.Generation.NarrativeTemplates.ContinuityFact,
+                new Dictionary<string, string>
                 {
-                    bible.ContinuityFacts.RemoveAt(0);
-                }
-            }
-            else
+                    ["EpisodeNumber"] = bible.ArcEpisodeNumber.ToString(),
+                    ["Timestamp"] = now.ToString("O"),
+                    ["SceneCount"] = sceneCount.ToString()
+                }));
+            if (bible.ContinuityFacts.Count > _options.Generation.ContinuityFactRetentionLimit)
             {
-                bible.ContinuityFacts.Clear();
+                bible.ContinuityFacts.RemoveAt(0);
             }
-
             bible.LastEpisodeSummary = BuildEpisodeSummary(polishedScenes.Length);
-            PersistStoryBibles();
         }
 
         var approvalRequired = request.ApprovalRequired ?? _options.DefaultApprovalRequired;
@@ -161,6 +136,53 @@ public sealed class StoryGenerationService(
                 ThemeTrackId: Pick(_options.Generation.ThemeTrackIds, _options.Generation.Fallbacks.ThemeTrackId),
                 NarrationStyle: Pick(_options.Generation.NarrationStyles, _options.Generation.Fallbacks.NarrationStyle))
         };
+    }
+
+    private StoryBible CreateBibleFromSnapshot(string seriesId, string protagonist, StoryBibleSnapshot snapshot)
+    {
+        var arcName = string.IsNullOrWhiteSpace(snapshot.ArcName)
+            ? Pick(_options.Generation.ArcNames, _options.Generation.Fallbacks.ArcName)
+            : snapshot.ArcName.Trim();
+        var recurringCharacter = string.IsNullOrWhiteSpace(snapshot.RecurringCharacter)
+            ? protagonist
+            : snapshot.RecurringCharacter.Trim();
+        var arcObjective = string.IsNullOrWhiteSpace(snapshot.ArcObjective)
+            ? ApplyTemplate(
+                _options.Generation.NarrativeTemplates.ArcObjective,
+                new Dictionary<string, string> { ["ArcName"] = arcName })
+            : snapshot.ArcObjective.Trim();
+
+        var bible = new StoryBible
+        {
+            SeriesId = seriesId,
+            VisualIdentity = string.IsNullOrWhiteSpace(snapshot.VisualIdentity)
+                ? $"{_options.Generation.PalettePrefix}{seriesId[..6]}"
+                : snapshot.VisualIdentity.Trim(),
+            RecurringCharacter = recurringCharacter,
+            ArcName = arcName,
+            ArcEpisodeNumber = Math.Max(0, snapshot.ArcEpisodeNumber),
+            ArcObjective = arcObjective,
+            LastEpisodeSummary = snapshot.PreviousEpisodeSummary?.Trim() ?? string.Empty,
+            AudioAnchorMetadata = new AudioAnchorMetadata(
+                ThemeTrackId: string.IsNullOrWhiteSpace(snapshot.AudioAnchorMetadata.ThemeTrackId)
+                    ? Pick(_options.Generation.ThemeTrackIds, _options.Generation.Fallbacks.ThemeTrackId)
+                    : snapshot.AudioAnchorMetadata.ThemeTrackId.Trim(),
+                NarrationStyle: string.IsNullOrWhiteSpace(snapshot.AudioAnchorMetadata.NarrationStyle)
+                    ? Pick(_options.Generation.NarrationStyles, _options.Generation.Fallbacks.NarrationStyle)
+                    : snapshot.AudioAnchorMetadata.NarrationStyle.Trim())
+        };
+
+        foreach (var fact in snapshot.ContinuityFacts.Where(fact => !string.IsNullOrWhiteSpace(fact)))
+        {
+            bible.ContinuityFacts.Add(fact.Trim());
+        }
+
+        if (bible.ContinuityFacts.Count > _options.Generation.ContinuityFactRetentionLimit)
+        {
+            bible.ContinuityFacts.RemoveRange(0, bible.ContinuityFacts.Count - _options.Generation.ContinuityFactRetentionLimit);
+        }
+
+        return bible;
     }
 
     private async Task<string> ComposeOutlineAsync(
@@ -484,6 +506,7 @@ public sealed class StoryGenerationService(
         ArcEpisodeNumber: bible.ArcEpisodeNumber,
         ArcObjective: bible.ArcObjective,
         PreviousEpisodeSummary: bible.LastEpisodeSummary,
+        ContinuityFacts: [.. bible.ContinuityFacts],
         AudioAnchorMetadata: bible.AudioAnchorMetadata);
 
     private string BuildEpisodeSummary(int sceneCount) =>
@@ -765,176 +788,4 @@ public sealed class StoryGenerationService(
         return rendered;
     }
 
-    private static string NormalizePersistentRecurringCharacter(
-        string configuredAlias,
-        string defaultAlias,
-        MessageTemplateOptions messages)
-    {
-        var normalized = configuredAlias.Trim();
-        if (!string.IsNullOrWhiteSpace(normalized))
-        {
-            return normalized;
-        }
-
-        var normalizedDefault = defaultAlias.Trim();
-        if (!string.IsNullOrWhiteSpace(normalizedDefault))
-        {
-            return normalizedDefault;
-        }
-
-        throw new InvalidOperationException(messages.Internal("PersistentRecurringCharacterAliasMustBeConfigured"));
-    }
-
-    private void PersistStoryBibles()
-    {
-        if (!_persistSeriesStoryBible)
-        {
-            return;
-        }
-
-        lock (StoryBiblePersistenceLock)
-        {
-            var directory = Path.GetDirectoryName(_storyBibleFilePath);
-            if (!string.IsNullOrWhiteSpace(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            var persisted = _seriesBibles.Values
-                .OrderBy(bible => bible.SeriesId, StringComparer.Ordinal)
-                .Select(bible => new PersistedStoryBible(
-                    bible.SeriesId,
-                    bible.VisualIdentity,
-                    _persistedRecurringCharacterAlias,
-                    bible.ArcName,
-                    bible.ArcEpisodeNumber,
-                    BuildPersistedArcObjective(bible.ArcName, _options.Generation.NarrativeTemplates.PersistedArcObjective),
-                    BuildPersistedEpisodeSummary(
-                        bible.ArcEpisodeNumber,
-                        _options.Generation.NarrativeTemplates.PersistedEpisodeSummary),
-                    _persistContinuityFacts ? [.. bible.ContinuityFacts] : null,
-                    bible.AudioAnchorMetadata))
-                .ToArray();
-
-            var tempFilePath = $"{_storyBibleFilePath}.{Guid.NewGuid():N}.tmp";
-            File.WriteAllText(
-                tempFilePath,
-                JsonSerializer.Serialize(
-                    persisted,
-                    new JsonSerializerOptions
-                    {
-                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                    }));
-            File.Move(tempFilePath, _storyBibleFilePath, overwrite: true);
-        }
-    }
-
-    private static ConcurrentDictionary<string, StoryBible> LoadStoryBibles(
-        bool persistEnabled,
-        string configuredPath,
-        bool persistContinuityFacts,
-        string recurringCharacterFallback,
-        string persistedArcObjectiveTemplate,
-        string persistedEpisodeSummaryTemplate)
-    {
-        var bibles = new ConcurrentDictionary<string, StoryBible>(StringComparer.Ordinal);
-        if (!persistEnabled)
-        {
-            return bibles;
-        }
-
-        var filePath = ResolveStoryBibleFilePath(configuredPath);
-        List<PersistedStoryBible> restored;
-        lock (StoryBiblePersistenceLock)
-        {
-            if (!File.Exists(filePath))
-            {
-                return bibles;
-            }
-
-            var raw = File.ReadAllText(filePath);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return bibles;
-            }
-
-            restored = JsonSerializer.Deserialize<List<PersistedStoryBible>>(raw) ?? [];
-        }
-
-        foreach (var item in restored)
-        {
-            var bible = new StoryBible
-            {
-                SeriesId = item.SeriesId,
-                VisualIdentity = item.VisualIdentity,
-                RecurringCharacter = string.IsNullOrWhiteSpace(item.RecurringCharacter)
-                    ? recurringCharacterFallback
-                    : item.RecurringCharacter,
-                ArcName = item.ArcName,
-                ArcEpisodeNumber = item.ArcEpisodeNumber,
-                ArcObjective = BuildPersistedArcObjective(item.ArcName, persistedArcObjectiveTemplate),
-                LastEpisodeSummary = BuildPersistedEpisodeSummary(item.ArcEpisodeNumber, persistedEpisodeSummaryTemplate),
-                AudioAnchorMetadata = item.AudioAnchorMetadata
-            };
-            if (persistContinuityFacts && item.ContinuityFacts is { Count: > 0 })
-            {
-                bible.ContinuityFacts.AddRange(item.ContinuityFacts.Where(fact => !string.IsNullOrWhiteSpace(fact)));
-            }
-
-            bibles[item.SeriesId] = bible;
-        }
-
-        return bibles;
-    }
-
-    private static string ResolveStoryBibleFilePath(string configuredPath)
-    {
-        if (Path.IsPathRooted(configuredPath))
-        {
-            return configuredPath;
-        }
-
-        return Path.Combine(AppContext.BaseDirectory, configuredPath);
-    }
-
-    private static string BuildPersistedArcObjective(string arcName, string template)
-    {
-        var normalizedArcName = string.IsNullOrWhiteSpace(arcName)
-            ? "current arc"
-            : arcName.Trim();
-        if (string.IsNullOrWhiteSpace(template))
-        {
-            return string.Empty;
-        }
-
-        return ApplyTemplate(
-            template,
-            new Dictionary<string, string>
-            {
-                ["ArcName"] = normalizedArcName
-            });
-    }
-
-    private static string BuildPersistedEpisodeSummary(int arcEpisodeNumber, string template)
-    {
-        return arcEpisodeNumber <= 0 || string.IsNullOrWhiteSpace(template)
-            ? string.Empty
-            : ApplyTemplate(
-                template,
-                new Dictionary<string, string>
-                {
-                    ["EpisodeNumber"] = arcEpisodeNumber.ToString()
-                });
-    }
-
-    private sealed record PersistedStoryBible(
-        string SeriesId,
-        string VisualIdentity,
-        string RecurringCharacter,
-        string ArcName,
-        int ArcEpisodeNumber,
-        string ArcObjective,
-        string? LastEpisodeSummary,
-        IReadOnlyList<string>? ContinuityFacts,
-        AudioAnchorMetadata AudioAnchorMetadata);
 }

@@ -8,6 +8,11 @@ internal static class StoryTimeOptionsFactory
     private const string ExternalProviderBaseUrlEnvironmentVariable = "STORYTIME_TEST_PROVIDER_BASE_URL";
     private static readonly Uri DefaultExternalProviderBaseUri = new("http://localhost:19081");
 
+    private static string BuildTempStateFile(string fileName)
+    {
+        return Path.Combine(Path.GetTempPath(), "storytime-tests", Guid.NewGuid().ToString("N"), fileName);
+    }
+
     private static string BuildProviderEndpoint(string relativePath)
     {
         var configuredBaseUrl = Environment.GetEnvironmentVariable(ExternalProviderBaseUrlEnvironmentVariable);
@@ -29,7 +34,7 @@ internal static class StoryTimeOptionsFactory
             DurationMinMinutes = 5,
             DurationMaxMinutes = 15,
             DurationDefaultMinutes = 6,
-            DefaultChildName = "Dreamer"
+            DefaultChildName = "Child"
         },
         ApiRoutes = new ApiRoutes
         {
@@ -51,16 +56,13 @@ internal static class StoryTimeOptionsFactory
         TierLimits = new Dictionary<string, TierLimits>(StringComparer.OrdinalIgnoreCase)
         {
             ["Trial"] = new TierLimits { Concurrency = 1, CooldownMinutes = 30, MaxDurationMinutes = 10 },
-            ["Plus"] = new TierLimits { Concurrency = 1, CooldownMinutes = 30, MaxDurationMinutes = 10 },
-            ["Premium"] = new TierLimits { Concurrency = 3, CooldownMinutes = 15, MaxDurationMinutes = 15 }
+            ["Plus"] = new TierLimits { Concurrency = 2, CooldownMinutes = 10, MaxDurationMinutes = 12 },
+            ["Premium"] = new TierLimits { Concurrency = 3, CooldownMinutes = 5, MaxDurationMinutes = 15 }
         },
         Generation = new GenerationOptions
         {
             ForceProceduralPosterFallback = false,
-            PersistSeriesStoryBible = false,
-            PersistContinuityFacts = true,
             ContinuityFactRetentionLimit = 30,
-            StoryBibleFilePath = "data/story-bibles.tests.json",
             MinutesPerScene = 2,
             MinSceneCount = 3,
             MaxSceneCount = 8,
@@ -174,7 +176,7 @@ internal static class StoryTimeOptionsFactory
                 CalmOpener = "A calm hush settles in",
                 CalmTransition = "the moment flows gently forward",
                 CalmCloser = "Everyone rests with a steady breath.",
-                PersistentRecurringCharacterAlias = "Dreamer",
+                PersistentRecurringCharacterAlias = "Child",
                 PosterLayers =
                 [
                     new PosterLayerRule { Role = "BACKGROUND", SpeedMultiplier = 0.2 },
@@ -190,7 +192,7 @@ internal static class StoryTimeOptionsFactory
                 EnforceOpenRouterEndpoint = true,
                 Endpoint = "https://openrouter.ai/api/v1/chat/completions",
                 ApiKey = "",
-                OpenRouterReferer = "https://storytime.local",
+                OpenRouterReferer = "https://storytime.example.com",
                 OpenRouterTitle = "StoryTime",
                 Model = "storytime-orchestrator",
                 TimeoutSeconds = 15,
@@ -236,7 +238,8 @@ internal static class StoryTimeOptionsFactory
             RequireAssertion = true,
             RequireChallengeBoundAssertion = true,
             RequireRegisteredCredential = true,
-            RequireUserVerification = false,
+            RequireUserVerification = true,
+            StateFilePath = BuildTempStateFile("parent-state.tests.json"),
             RelyingPartyId = "localhost",
             AssertionType = ParentGateAssertionTypes.WebAuthnGet,
             AllowedOrigins = ["http://localhost", "http://127.0.0.1"]
@@ -244,7 +247,8 @@ internal static class StoryTimeOptionsFactory
         ParentDefaults = new ParentSettingsDefaults
         {
             NotificationsEnabled = false,
-            AnalyticsEnabled = false
+            AnalyticsEnabled = false,
+            KidShelfEnabled = false
         },
         Catalog = new CatalogOptions
         {
@@ -272,16 +276,25 @@ internal static class StoryTimeOptionsFactory
         },
         Cors = new CorsOptions
         {
-            AllowedOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"],
+            AllowedOrigins =
+            [
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:4173",
+                "http://127.0.0.1:4173"
+            ],
             AllowedMethods = ["GET", "POST", "PUT", "OPTIONS"],
-            AllowedHeaders = ["Content-Type", "Authorization"]
+            AllowedHeaders = ["Content-Type", "Authorization", "X-StoryTime-Gate-Token"]
         },
         Checkout = new CheckoutOptions
         {
             DefaultTier = "Trial",
-            UpgradeTier = "Premium",
             UpgradeUrl = "/subscribe",
+            DefaultReturnUrl = "https://storytime.example.com/checkout",
+            TierOrder = ["Trial", "Plus", "Premium"],
             SessionTtlMinutes = 15,
+            StateFilePath = BuildTempStateFile("subscription-state.tests.json"),
+            WebhookSharedSecret = "test-webhook-secret",
             Provider = new CheckoutProviderOptions
             {
                 Mode = CheckoutProviderModes.External,

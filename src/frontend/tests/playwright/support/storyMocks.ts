@@ -5,21 +5,38 @@ export const jsonHeaders = Object.freeze({
   'Access-Control-Allow-Origin': '*',
 })
 
+const createPosterLayerDataUri = (fill: string, opacity: number, accentFill: string): string => {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 96">
+      <rect width="160" height="96" rx="12" fill="${fill}" fill-opacity="${opacity}" />
+      <circle cx="120" cy="22" r="10" fill="${accentFill}" fill-opacity="0.72" />
+      <path d="M8 86C28 54 46 42 72 42C96 42 118 56 152 82V96H8Z" fill="${accentFill}" fill-opacity="0.34" />
+    </svg>
+  `.trim()
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
+
 export const posterLayers = Object.freeze([
   {
     role: 'BACKGROUND',
     speedMultiplier: 0.2,
-    dataUri: 'data:image/svg+xml;base64,PHN2Zy8+',
+    dataUri: createPosterLayerDataUri('#172554', 1, '#67e8f9'),
+  },
+  {
+    role: 'MIDGROUND_1',
+    speedMultiplier: 0.55,
+    dataUri: createPosterLayerDataUri('#1d4ed8', 0.86, '#fef08a'),
   },
   {
     role: 'FOREGROUND',
     speedMultiplier: 1.0,
-    dataUri: 'data:image/svg+xml;base64,PHN2Zy8+',
+    dataUri: createPosterLayerDataUri('#7c3aed', 0.72, '#fca5a5'),
   },
   {
     role: 'PARTICLES',
     speedMultiplier: 1.3,
-    dataUri: 'data:image/svg+xml;base64,PHN2Zy8+',
+    dataUri: createPosterLayerDataUri('#ec4899', 0.42, '#ffffff'),
   },
 ])
 
@@ -29,7 +46,7 @@ export const homeStatusPayload = Object.freeze({
   durationMinMinutes: 5,
   durationMaxMinutes: 15,
   durationDefaultMinutes: 6,
-  defaultChildName: 'Dreamer',
+  defaultChildName: 'Child',
   parentControlsEnabled: true,
   defaultTier: 'Trial',
   oneShotDefaults: {
@@ -45,7 +62,7 @@ export const homeStatusPayload = Object.freeze({
 export const emptyLibraryPayload = Object.freeze({
   recent: [],
   favorites: [],
-  kidModeEnabled: false,
+  kidShelfEnabled: false,
 })
 
 export const fulfillJson = async (route: Route, status: number, body: unknown) => {

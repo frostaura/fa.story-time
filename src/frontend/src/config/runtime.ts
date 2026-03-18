@@ -74,6 +74,24 @@ const toOptionalInt = (value: unknown): number | null => {
   return parsed
 }
 
+const toOptionalIntList = (value: unknown): number[] | null => {
+  const raw = toOptionalString(value)
+  if (raw === null) {
+    return null
+  }
+
+  const parsed = raw
+    .split(',')
+    .map((entry) => toOptionalInt(entry))
+    .filter((entry): entry is number => entry !== null)
+
+  if (parsed.length === 0) {
+    return null
+  }
+
+  return [...new Set(parsed)]
+}
+
 const toOptionalBoolean = (value: unknown): boolean | null => {
   if (typeof value !== 'string') {
     return null
@@ -214,6 +232,7 @@ const subscriptionBaseRoute = requireRoutePath(
 )
 const parentBaseRoute = requireRoutePath(import.meta.env.VITE_API_ROUTE_PARENT_BASE, 'VITE_API_ROUTE_PARENT_BASE')
 const libraryBaseRoute = requireRoutePath(import.meta.env.VITE_API_ROUTE_LIBRARY_BASE, 'VITE_API_ROUTE_LIBRARY_BASE')
+const defaultApiBaseUrl = requireString(import.meta.env.VITE_API_BASE_URL, 'VITE_API_BASE_URL')
 const configuredWebAuthnUserIdMaxLength = requirePositiveInt(
   import.meta.env.VITE_PARENT_GATE_WEBAUTHN_USER_ID_MAX_LENGTH,
   'VITE_PARENT_GATE_WEBAUTHN_USER_ID_MAX_LENGTH',
@@ -222,6 +241,12 @@ const configuredWebAuthnUserIdProtocolMaxLength = requirePositiveInt(
   import.meta.env.VITE_PARENT_GATE_WEBAUTHN_USER_ID_PROTOCOL_MAX_LENGTH,
   'VITE_PARENT_GATE_WEBAUTHN_USER_ID_PROTOCOL_MAX_LENGTH',
 )
+const configuredPrimaryCoseAlgorithm = requireInt(
+  import.meta.env.VITE_PARENT_GATE_WEBAUTHN_COSE_ALGORITHM,
+  'VITE_PARENT_GATE_WEBAUTHN_COSE_ALGORITHM',
+)
+const configuredFallbackCoseAlgorithms =
+  toOptionalIntList(import.meta.env.VITE_PARENT_GATE_WEBAUTHN_FALLBACK_COSE_ALGORITHMS) ?? [-257]
 
 if (configuredWebAuthnUserIdMaxLength > configuredWebAuthnUserIdProtocolMaxLength) {
   throwMissingRuntimeConfig('VITE_PARENT_GATE_WEBAUTHN_USER_ID_MAX_LENGTH')
@@ -294,6 +319,10 @@ export const runtimeConfig = Object.freeze({
       import.meta.env.VITE_STORAGE_KEY_PARENT_CREDENTIAL,
       'VITE_STORAGE_KEY_PARENT_CREDENTIAL',
     ),
+    pendingCheckout: requireString(
+      import.meta.env.VITE_STORAGE_KEY_PENDING_CHECKOUT,
+      'VITE_STORAGE_KEY_PENDING_CHECKOUT',
+    ),
   }),
   parentGate: Object.freeze({
     rpDisplayName: requireString(
@@ -325,10 +354,10 @@ export const runtimeConfig = Object.freeze({
         'VITE_PARENT_GATE_WEBAUTHN_RESIDENT_KEY',
       ),
     ),
-    coseAlgorithm: requireInt(
-      import.meta.env.VITE_PARENT_GATE_WEBAUTHN_COSE_ALGORITHM,
-      'VITE_PARENT_GATE_WEBAUTHN_COSE_ALGORITHM',
-    ),
+    coseAlgorithms: [
+      configuredPrimaryCoseAlgorithm,
+      ...configuredFallbackCoseAlgorithms.filter((algorithm) => algorithm !== configuredPrimaryCoseAlgorithm),
+    ],
     userVerification: toUserVerificationRequirement(
       requireString(
         import.meta.env.VITE_PARENT_GATE_WEBAUTHN_USER_VERIFICATION,
@@ -343,6 +372,7 @@ export const runtimeConfig = Object.freeze({
       import.meta.env.VITE_PARENT_GATE_ASSERTION_TYPE,
       'VITE_PARENT_GATE_ASSERTION_TYPE',
     ),
+    rpId: requireString(import.meta.env.VITE_PARENT_GATE_RP_ID, 'VITE_PARENT_GATE_RP_ID'),
   }),
   posterParallax: Object.freeze({
     minAnimationDurationSeconds: requirePositiveNumber(
@@ -386,18 +416,5 @@ export const resolveApiBaseUrl = (): string => {
     }
   }
 
-  const fromEnv = import.meta.env.VITE_API_BASE_URL
-  if (typeof fromEnv === 'string' && fromEnv.trim().length > 0) {
-    return fromEnv.trim()
-  }
-
-  if (
-    typeof window !== 'undefined' &&
-    typeof window.location.origin === 'string' &&
-    window.location.origin.trim().length > 0
-  ) {
-    return window.location.origin.trim()
-  }
-
-  return ''
+  return defaultApiBaseUrl
 }

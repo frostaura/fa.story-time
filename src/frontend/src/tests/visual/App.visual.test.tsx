@@ -20,7 +20,7 @@ describe('App visual regression', () => {
               durationMinMinutes: 5,
               durationMaxMinutes: 15,
               durationDefaultMinutes: 6,
-              defaultChildName: 'Dreamer',
+              defaultChildName: 'Child',
               parentControlsEnabled: true,
               defaultTier: 'Trial',
               oneShotDefaults: {
@@ -41,7 +41,7 @@ describe('App visual regression', () => {
             JSON.stringify({
               recent: [],
               favorites: [],
-              kidModeEnabled: false,
+              kidShelfEnabled: false,
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
           )

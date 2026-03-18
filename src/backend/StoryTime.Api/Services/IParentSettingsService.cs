@@ -12,13 +12,21 @@ public interface IParentSettingsService
 
     bool IsGateAuthorized(string softUserId, string gateToken, DateTimeOffset now);
 
+    bool IsKidShelfEnabled(string softUserId);
+
     ParentSettingsSnapshot? GetSettings(string softUserId, string gateToken, DateTimeOffset now);
 
-    ParentSettingsSnapshot? UpdateSettings(string softUserId, string gateToken, bool notificationsEnabled, bool analyticsEnabled, DateTimeOffset now);
+    ParentSettingsSnapshot? UpdateSettings(
+        string softUserId,
+        string gateToken,
+        bool notificationsEnabled,
+        bool analyticsEnabled,
+        bool kidShelfEnabled,
+        DateTimeOffset now);
 }
 
 public sealed record ParentGateChallenge(string ChallengeId, string Challenge, string RpId, DateTimeOffset ExpiresAt);
 
 public sealed record ParentGateSession(string GateToken, DateTimeOffset ExpiresAt);
 
-public sealed record ParentSettingsSnapshot(bool NotificationsEnabled, bool AnalyticsEnabled);
+public sealed record ParentSettingsSnapshot(bool NotificationsEnabled, bool AnalyticsEnabled, bool KidShelfEnabled);

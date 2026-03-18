@@ -29,19 +29,6 @@ exports[`App > matches generated story visual baseline with poster layers 1`] = 
           Trial
         </span>
       </div>
-      <div
-        class="header-toggle-divider"
-      />
-      <label
-        class="toggle"
-      >
-        <input
-          aria-label="Kid Shelf"
-          data-testid="kid-shelf-toggle"
-          type="checkbox"
-        />
-        Kid Shelf
-      </label>
     </header>
     <div
       class="controls-row"
@@ -55,108 +42,143 @@ exports[`App > matches generated story visual baseline with poster layers 1`] = 
           Quick Generate
         </h2>
         <div
-          class="form-group"
+          class="quick-generate-main-fields"
         >
-          <label
-            for="child-name"
+          <div
+            class="form-group"
           >
-            Child name
-          </label>
-          <input
-            data-testid="child-name-input"
-            id="child-name"
-            name="childName"
-            placeholder="Dreamer"
-            type="text"
-            value="Dreamer"
-          />
+            <label
+              for="child-name"
+            >
+              Child name
+            </label>
+            <input
+              data-testid="child-name-input"
+              id="child-name"
+              name="childName"
+              placeholder="Child"
+              type="text"
+              value="Child"
+            />
+          </div>
+          <div
+            class="form-group"
+          >
+            <label
+              for="duration"
+            >
+              Duration (6 min)
+            </label>
+            <div
+              class="slider-container"
+            >
+              <div
+                class="slider-track"
+              >
+                <span
+                  class="slider-bound"
+                >
+                  5 min
+                </span>
+                <input
+                  aria-label="Duration"
+                  aria-valuetext="6 minutes"
+                  data-testid="duration-slider"
+                  id="duration"
+                  max="15"
+                  min="5"
+                  step="1"
+                  style="--slider-progress: 10%;"
+                  type="range"
+                  value="6"
+                />
+                <span
+                  class="slider-bound"
+                >
+                  15 min
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="form-group"
+          >
+            <label
+              for="mode"
+            >
+              Mode
+            </label>
+            <select
+              data-testid="mode-select"
+              id="mode"
+            >
+              <option
+                value="series"
+              >
+                Series
+              </option>
+              <option
+                value="one-shot"
+              >
+                One-shot
+              </option>
+            </select>
+          </div>
         </div>
         <div
-          class="form-group"
+          class="quick-generate-footer"
         >
           <label
-            for="duration"
+            class="toggle"
           >
-            Duration (6 min)
+            <input
+              aria-label="Reduced motion"
+              data-testid="reduced-motion-toggle"
+              type="checkbox"
+            />
+            Reduced motion
           </label>
           <div
-            class="slider-container"
+            class="quick-generate-actions"
           >
-            <div
-              class="slider-track"
+            <button
+              class="btn-primary"
+              data-testid="generate-story-button"
+              type="button"
             >
               <span
-                class="slider-bound"
+                class="btn-primary-content"
               >
-                5 min
+                <span
+                  aria-hidden="true"
+                  class="btn-primary-icon sparkle"
+                >
+                  ✨
+                </span>
+                <span>
+                  Generate story
+                </span>
               </span>
-              <input
-                aria-label="Duration"
-                aria-valuetext="6 minutes"
-                data-testid="duration-slider"
-                id="duration"
-                max="15"
-                min="5"
-                step="1"
-                style="--slider-progress: 10%;"
-                type="range"
-                value="6"
-              />
+            </button>
+            <div
+              class="feedback-banner feedback-banner-success quick-generate-feedback"
+              data-testid="quick-generate-feedback"
+              role="status"
+            >
               <span
-                class="slider-bound"
+                aria-hidden="true"
+                class="feedback-banner-icon"
               >
-                15 min
+                ✨
+              </span>
+              <span
+                class="feedback-banner-text"
+              >
+                Ari and the Moonlit Meadow is ready in Recent.
               </span>
             </div>
           </div>
         </div>
-        <div
-          class="form-group"
-        >
-          <label
-            for="mode"
-          >
-            Mode
-          </label>
-          <select
-            data-testid="mode-select"
-            id="mode"
-          >
-            <option
-              value="series"
-            >
-              Series
-            </option>
-            <option
-              value="one-shot"
-            >
-              One-shot
-            </option>
-          </select>
-        </div>
-        <label
-          class="toggle"
-        >
-          <input
-            aria-label="Reduced motion"
-            data-testid="reduced-motion-toggle"
-            type="checkbox"
-          />
-          Reduced motion
-        </label>
-        <button
-          class="btn-primary"
-          data-testid="generate-story-button"
-          type="button"
-        >
-          <span
-            aria-hidden="true"
-            class="sparkle"
-          >
-            ✨ 
-          </span>
-          Generate story
-        </button>
       </section>
       <section
         aria-label="Parent controls"
@@ -174,6 +196,29 @@ exports[`App > matches generated story visual baseline with poster layers 1`] = 
           </span>
           Parent Controls
         </h3>
+        <p
+          class="parent-controls-intro"
+        >
+          Unlock once, then manage bedtime browsing and future preferences in one calm place.
+        </p>
+        <div
+          class="parent-controls-support parent-controls-support-ready"
+        >
+          <div
+            class="parent-controls-support-copy"
+          >
+            <p
+              class="parent-controls-support-title"
+            >
+              Verify parent with passkey
+            </p>
+            <p
+              class="parent-controls-hint"
+            >
+              Use the same browser profile that created your parent passkey. StoryTime will unlock the rest of this card as soon as verification finishes.
+            </p>
+          </div>
+        </div>
         <div
           class="parent-controls-row"
         >
@@ -185,52 +230,105 @@ exports[`App > matches generated story visual baseline with poster layers 1`] = 
             Verify parent with passkey
           </button>
         </div>
-        <label
-          class="toggle"
-        >
-          <input
-            aria-label="Notifications enabled"
-            data-testid="notifications-toggle"
-            disabled=""
-            type="checkbox"
-          />
-          Notifications enabled
-        </label>
         <p
-          class="toggle-disabled-hint"
+          class="parent-controls-locked-note"
+          data-testid="parent-controls-locked-note"
         >
-          Verify parent identity to change this setting
+          Verify parent identity once to edit the settings below.
         </p>
-        <label
-          class="toggle"
+        <div
+          class="parent-controls-settings"
         >
-          <input
-            aria-label="Analytics enabled"
-            data-testid="analytics-toggle"
-            disabled=""
-            type="checkbox"
-          />
-          Analytics enabled
-        </label>
-        <p
-          class="toggle-disabled-hint"
-        >
-          Verify parent identity to change this setting
-        </p>
+          <div
+            class="parent-control-item"
+          >
+            <label
+              class="toggle"
+            >
+              <input
+                aria-label="Kid Shelf"
+                data-testid="kid-shelf-parent-toggle"
+                disabled=""
+                type="checkbox"
+              />
+              Kid Shelf
+            </label>
+          </div>
+          <div
+            class="parent-control-item"
+          >
+            <label
+              class="toggle"
+            >
+              <input
+                aria-label="Notifications enabled"
+                data-testid="notifications-toggle"
+                disabled=""
+                type="checkbox"
+              />
+              Notifications enabled
+            </label>
+            <p
+              class="toggle-support-copy"
+            >
+              Saves a bedtime reminder preference only. Push delivery is not enabled in this build.
+            </p>
+          </div>
+          <div
+            class="parent-control-item"
+          >
+            <label
+              class="toggle"
+            >
+              <input
+                aria-label="Analytics enabled"
+                data-testid="analytics-toggle"
+                disabled=""
+                type="checkbox"
+              />
+              Analytics enabled
+            </label>
+            <p
+              class="toggle-support-copy"
+            >
+              Stores consent for future diagnostics only. No external analytics provider is enabled by default.
+            </p>
+          </div>
+        </div>
       </section>
     </div>
     <section
       aria-label="Recent stories"
-      class="shelf"
+      class="shelf shelf-recent"
+      data-empty="false"
       data-testid="recent-stories-shelf"
     >
-      <h3>
-        Recent
-      </h3>
+      <div
+        class="shelf-header"
+      >
+        <div
+          class="shelf-header-copy"
+        >
+          <h3>
+            Recent
+          </h3>
+          <p
+            class="shelf-description"
+          >
+            Newest bedtime stories stay here so you can keep going right away.
+          </p>
+        </div>
+        <span
+          class="shelf-count"
+        >
+          1 saved
+        </span>
+      </div>
       <ul>
         <li
-          class="story-card"
+          class="story-card story-card-default story-card-highlighted"
           data-testid="recent-story-story-123"
+          id="recent-story-story-123"
         >
           <div
             class="story-layout"
@@ -256,58 +354,126 @@ exports[`App > matches generated story visual baseline with poster layers 1`] = 
             <div
               class="story-summary"
             >
-              <strong>
-                Ari and the Moonlit Meadow
-              </strong>
-              <span
-                class="series-progress"
-                data-testid="recent-story-series-progress-story-123"
-              >
-                Moonlit Meadow · Episode 1
-              </span>
-              <small>
-                Previously: calm winds.
-              </small>
               <div
-                class="audio-stack"
+                class="story-header"
               >
+                <div
+                  class="story-meta-row"
+                >
+                  <span
+                    class="story-audio-state"
+                  >
+                    Preview clip
+                  </span>
+                  <span
+                    class="series-progress story-series-progress"
+                    data-testid="recent-story-series-progress-story-123"
+                  >
+                    Moonlit Meadow · Episode 1
+                  </span>
+                </div>
+                <strong
+                  class="story-title"
+                >
+                  Ari and the Moonlit Meadow
+                </strong>
+                <div
+                  class="story-detail-row"
+                >
+                  <span
+                    class="story-detail-chip"
+                  >
+                    Series
+                  </span>
+                </div>
+              </div>
+              <p
+                class="story-recap"
+              >
+                Previously: calm winds.
+              </p>
+              <div
+                class="story-audio-panel"
+              >
+                <div
+                  class="story-audio-panel-meta"
+                >
+                  <span
+                    class="story-audio-panel-label"
+                  >
+                    Preview clip
+                  </span>
+                  <span
+                    class="story-audio-duration"
+                  >
+                    Preview ready · about 0:36
+                  </span>
+                </div>
                 <audio
                   aria-label="Teaser narration for Ari and the Moonlit Meadow"
                   controls=""
                   data-testid="recent-story-teaser-audio-story-123"
-                  preload="none"
+                  preload="metadata"
                   src="data:audio/wav;base64,AAA="
                 />
+                <span
+                  class="story-audio-status"
+                >
+                  Preview ready · about 0:36
+                </span>
+              </div>
+              <p
+                class="story-feedback"
+                data-testid="recent-story-approval-hint-story-123"
+              >
+                Verify parent identity before approving full narration.
+              </p>
+              <div
+                class="story-actions"
+              >
+                <button
+                  class="btn-primary story-action-primary"
+                  data-testid="recent-story-approve-story-123"
+                  disabled=""
+                  type="button"
+                >
+                  Approve full narration
+                </button>
+                <button
+                  class="btn-secondary story-action-secondary"
+                  data-testid="recent-story-toggle-favorite-story-123"
+                  type="button"
+                >
+                  Favorite
+                </button>
               </div>
             </div>
-          </div>
-          <div
-            class="story-actions"
-          >
-            <button
-              data-testid="recent-story-approve-story-123"
-              type="button"
-            >
-              Approve full narration
-            </button>
-            <button
-              data-testid="recent-story-toggle-favorite-story-123"
-              type="button"
-            >
-              Favorite
-            </button>
           </div>
         </li>
       </ul>
     </section>
     <section
       aria-label="Favorite stories"
-      class="shelf"
+      class="shelf shelf-favorites shelf-empty"
+      data-empty="true"
       data-testid="favorite-stories-shelf"
     >
-      <h3>
-        Favorites
-      </h3>
+      <div
+        class="shelf-header"
+      >
+        <div
+          class="shelf-header-copy"
+        >
+          <h3>
+            Favorites
+          </h3>
+          <p
+            class="shelf-description"
+          >
+            Favorites stay condensed for quick replays, approvals, and calm browsing.
+          </p>
+        </div>
+      </div>
       <div
         class="empty-state"
       >
@@ -321,7 +487,6 @@ exports[`App > matches generated story visual baseline with poster layers 1`] = 
           Star your favorites to find them here!
         </p>
       </div>
-      <ul />
     </section>
   </main>
 </DocumentFragment>
@@ -356,19 +521,6 @@ exports[`App > matches the quick generate visual baseline 1`] = `
           Trial
         </span>
       </div>
-      <div
-        class="header-toggle-divider"
-      />
-      <label
-        class="toggle"
-      >
-        <input
-          aria-label="Kid Shelf"
-          data-testid="kid-shelf-toggle"
-          type="checkbox"
-        />
-        Kid Shelf
-      </label>
     </header>
     <div
       class="controls-row"
@@ -382,108 +534,126 @@ exports[`App > matches the quick generate visual baseline 1`] = `
           Quick Generate
         </h2>
         <div
-          class="form-group"
+          class="quick-generate-main-fields"
         >
-          <label
-            for="child-name"
-          >
-            Child name
-          </label>
-          <input
-            data-testid="child-name-input"
-            id="child-name"
-            name="childName"
-            placeholder="Dreamer"
-            type="text"
-            value="Dreamer"
-          />
-        </div>
-        <div
-          class="form-group"
-        >
-          <label
-            for="duration"
-          >
-            Duration (6 min)
-          </label>
           <div
-            class="slider-container"
+            class="form-group"
           >
-            <div
-              class="slider-track"
+            <label
+              for="child-name"
             >
-              <span
-                class="slider-bound"
+              Child name
+            </label>
+            <input
+              data-testid="child-name-input"
+              id="child-name"
+              name="childName"
+              placeholder="Child"
+              type="text"
+              value="Child"
+            />
+          </div>
+          <div
+            class="form-group"
+          >
+            <label
+              for="duration"
+            >
+              Duration (6 min)
+            </label>
+            <div
+              class="slider-container"
+            >
+              <div
+                class="slider-track"
               >
-                5 min
-              </span>
-              <input
-                aria-label="Duration"
-                aria-valuetext="6 minutes"
-                data-testid="duration-slider"
-                id="duration"
-                max="15"
-                min="5"
-                step="1"
-                style="--slider-progress: 10%;"
-                type="range"
-                value="6"
-              />
-              <span
-                class="slider-bound"
-              >
-                15 min
-              </span>
+                <span
+                  class="slider-bound"
+                >
+                  5 min
+                </span>
+                <input
+                  aria-label="Duration"
+                  aria-valuetext="6 minutes"
+                  data-testid="duration-slider"
+                  id="duration"
+                  max="15"
+                  min="5"
+                  step="1"
+                  style="--slider-progress: 10%;"
+                  type="range"
+                  value="6"
+                />
+                <span
+                  class="slider-bound"
+                >
+                  15 min
+                </span>
+              </div>
             </div>
+          </div>
+          <div
+            class="form-group"
+          >
+            <label
+              for="mode"
+            >
+              Mode
+            </label>
+            <select
+              data-testid="mode-select"
+              id="mode"
+            >
+              <option
+                value="series"
+              >
+                Series
+              </option>
+              <option
+                value="one-shot"
+              >
+                One-shot
+              </option>
+            </select>
           </div>
         </div>
         <div
-          class="form-group"
+          class="quick-generate-footer"
         >
           <label
-            for="mode"
+            class="toggle"
           >
-            Mode
+            <input
+              aria-label="Reduced motion"
+              data-testid="reduced-motion-toggle"
+              type="checkbox"
+            />
+            Reduced motion
           </label>
-          <select
-            data-testid="mode-select"
-            id="mode"
+          <div
+            class="quick-generate-actions"
           >
-            <option
-              value="series"
+            <button
+              class="btn-primary"
+              data-testid="generate-story-button"
+              type="button"
             >
-              Series
-            </option>
-            <option
-              value="one-shot"
-            >
-              One-shot
-            </option>
-          </select>
+              <span
+                class="btn-primary-content"
+              >
+                <span
+                  aria-hidden="true"
+                  class="btn-primary-icon sparkle"
+                >
+                  ✨
+                </span>
+                <span>
+                  Generate story
+                </span>
+              </span>
+            </button>
+          </div>
         </div>
-        <label
-          class="toggle"
-        >
-          <input
-            aria-label="Reduced motion"
-            data-testid="reduced-motion-toggle"
-            type="checkbox"
-          />
-          Reduced motion
-        </label>
-        <button
-          class="btn-primary"
-          data-testid="generate-story-button"
-          type="button"
-        >
-          <span
-            aria-hidden="true"
-            class="sparkle"
-          >
-            ✨ 
-          </span>
-          Generate story
-        </button>
       </section>
       <section
         aria-label="Parent controls"
@@ -501,6 +671,29 @@ exports[`App > matches the quick generate visual baseline 1`] = `
           </span>
           Parent Controls
         </h3>
+        <p
+          class="parent-controls-intro"
+        >
+          Unlock once, then manage bedtime browsing and future preferences in one calm place.
+        </p>
+        <div
+          class="parent-controls-support parent-controls-support-ready"
+        >
+          <div
+            class="parent-controls-support-copy"
+          >
+            <p
+              class="parent-controls-support-title"
+            >
+              Verify parent with passkey
+            </p>
+            <p
+              class="parent-controls-hint"
+            >
+              Use the same browser profile that created your parent passkey. StoryTime will unlock the rest of this card as soon as verification finishes.
+            </p>
+          </div>
+        </div>
         <div
           class="parent-controls-row"
         >
@@ -512,48 +705,95 @@ exports[`App > matches the quick generate visual baseline 1`] = `
             Verify parent with passkey
           </button>
         </div>
-        <label
-          class="toggle"
-        >
-          <input
-            aria-label="Notifications enabled"
-            data-testid="notifications-toggle"
-            disabled=""
-            type="checkbox"
-          />
-          Notifications enabled
-        </label>
         <p
-          class="toggle-disabled-hint"
+          class="parent-controls-locked-note"
+          data-testid="parent-controls-locked-note"
         >
-          Verify parent identity to change this setting
+          Verify parent identity once to edit the settings below.
         </p>
-        <label
-          class="toggle"
+        <div
+          class="parent-controls-settings"
         >
-          <input
-            aria-label="Analytics enabled"
-            data-testid="analytics-toggle"
-            disabled=""
-            type="checkbox"
-          />
-          Analytics enabled
-        </label>
-        <p
-          class="toggle-disabled-hint"
-        >
-          Verify parent identity to change this setting
-        </p>
+          <div
+            class="parent-control-item"
+          >
+            <label
+              class="toggle"
+            >
+              <input
+                aria-label="Kid Shelf"
+                data-testid="kid-shelf-parent-toggle"
+                disabled=""
+                type="checkbox"
+              />
+              Kid Shelf
+            </label>
+          </div>
+          <div
+            class="parent-control-item"
+          >
+            <label
+              class="toggle"
+            >
+              <input
+                aria-label="Notifications enabled"
+                data-testid="notifications-toggle"
+                disabled=""
+                type="checkbox"
+              />
+              Notifications enabled
+            </label>
+            <p
+              class="toggle-support-copy"
+            >
+              Saves a bedtime reminder preference only. Push delivery is not enabled in this build.
+            </p>
+          </div>
+          <div
+            class="parent-control-item"
+          >
+            <label
+              class="toggle"
+            >
+              <input
+                aria-label="Analytics enabled"
+                data-testid="analytics-toggle"
+                disabled=""
+                type="checkbox"
+              />
+              Analytics enabled
+            </label>
+            <p
+              class="toggle-support-copy"
+            >
+              Stores consent for future diagnostics only. No external analytics provider is enabled by default.
+            </p>
+          </div>
+        </div>
       </section>
     </div>
     <section
       aria-label="Recent stories"
-      class="shelf"
+      class="shelf shelf-recent shelf-empty"
+      data-empty="true"
       data-testid="recent-stories-shelf"
     >
-      <h3>
-        Recent
-      </h3>
+      <div
+        class="shelf-header"
+      >
+        <div
+          class="shelf-header-copy"
+        >
+          <h3>
+            Recent
+          </h3>
+          <p
+            class="shelf-description"
+          >
+            Newest bedtime stories stay here so you can keep going right away.
+          </p>
+        </div>
+      </div>
       <div
         class="empty-state"
       >
@@ -567,16 +807,29 @@ exports[`App > matches the quick generate visual baseline 1`] = `
           Generate your first bedtime adventure!
         </p>
       </div>
-      <ul />
     </section>
     <section
       aria-label="Favorite stories"
-      class="shelf"
+      class="shelf shelf-favorites shelf-empty"
+      data-empty="true"
       data-testid="favorite-stories-shelf"
     >
-      <h3>
-        Favorites
-      </h3>
+      <div
+        class="shelf-header"
+      >
+        <div
+          class="shelf-header-copy"
+        >
+          <h3>
+            Favorites
+          </h3>
+          <p
+            class="shelf-description"
+          >
+            Favorites stay condensed for quick replays, approvals, and calm browsing.
+          </p>
+        </div>
+      </div>
       <div
         class="empty-state"
       >
@@ -590,7 +843,6 @@ exports[`App > matches the quick generate visual baseline 1`] = `
           Star your favorites to find them here!
         </p>
       </div>
-      <ul />
     </section>
   </main>
 </DocumentFragment>

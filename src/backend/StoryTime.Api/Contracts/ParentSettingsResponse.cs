@@ -1,3 +1,3 @@
 namespace StoryTime.Api.Contracts;
 
-public sealed record ParentSettingsResponse(bool NotificationsEnabled, bool AnalyticsEnabled);
+public sealed record ParentSettingsResponse(bool NotificationsEnabled, bool AnalyticsEnabled, bool KidShelfEnabled);

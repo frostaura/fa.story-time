@@ -8,4 +8,5 @@ public sealed record StoryBibleSnapshot(
     int ArcEpisodeNumber,
     string ArcObjective,
     string PreviousEpisodeSummary,
+    IReadOnlyList<string> ContinuityFacts,
     AudioAnchorMetadata AudioAnchorMetadata);

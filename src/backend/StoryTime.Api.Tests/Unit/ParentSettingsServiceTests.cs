@@ -67,11 +67,13 @@ public sealed class ParentSettingsServiceTests
             session!.GateToken,
             notificationsEnabled: true,
             analyticsEnabled: false,
+            kidShelfEnabled: true,
             now.AddSeconds(2));
 
         Assert.NotNull(updated);
         Assert.True(updated!.NotificationsEnabled);
         Assert.False(updated.AnalyticsEnabled);
+        Assert.True(updated.KidShelfEnabled);
     }
 
     [Fact]
@@ -109,18 +111,38 @@ public sealed class ParentSettingsServiceTests
         Assert.Null(replayedSession);
     }
 
+    [Fact]
+    public void VerifyGate_AllowsConfiguredLoopbackHostWithDevelopmentPort()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var (credentialId, publicKey, privateKey) = CreateCredentialPair();
+        var registered = _service.RegisterCredential("localhost-port-user", credentialId, publicKey);
+        Assert.True(registered);
+
+        var challenge = _service.CreateChallenge("localhost-port-user", now);
+        var assertion = BuildAssertion(
+            challenge.Challenge,
+            credentialId,
+            privateKey,
+            origin: "http://localhost:5173");
+        var session = _service.VerifyGate("localhost-port-user", challenge.ChallengeId, assertion, now.AddSeconds(5));
+
+        Assert.NotNull(session);
+    }
+
     private static ParentGateAssertion BuildAssertion(
         string challenge,
         string credentialId,
         byte[] privateKey,
         string rpId = "localhost",
+        string origin = "http://localhost",
         uint signCount = 1)
     {
         var clientDataRaw = JsonSerializer.Serialize(new
         {
             type = ParentGateAssertionTypes.WebAuthnGet,
             challenge,
-            origin = "http://localhost"
+            origin
         });
         var clientDataBytes = Encoding.UTF8.GetBytes(clientDataRaw);
         var authenticatorDataBytes = BuildAuthenticatorData(rpId, signCount);
@@ -132,7 +154,10 @@ public sealed class ParentSettingsServiceTests
 
         using var key = ECDsa.Create();
         key.ImportECPrivateKey(privateKey, out _);
-        var signature = key.SignData(signedPayload, HashAlgorithmName.SHA256);
+        var signature = key.SignData(
+            signedPayload,
+            HashAlgorithmName.SHA256,
+            DSASignatureFormat.Rfc3279DerSequence);
 
         return new ParentGateAssertion(
             CredentialId: credentialId,
@@ -147,7 +172,7 @@ public sealed class ParentSettingsServiceTests
         var rpIdHash = SHA256.HashData(Encoding.UTF8.GetBytes(rpId));
         var authenticatorData = new byte[37];
         Buffer.BlockCopy(rpIdHash, 0, authenticatorData, 0, rpIdHash.Length);
-        authenticatorData[32] = 0x01;
+        authenticatorData[32] = 0x05;
         BinaryPrimitives.WriteUInt32BigEndian(authenticatorData.AsSpan(33, 4), signCount);
         return authenticatorData;
     }

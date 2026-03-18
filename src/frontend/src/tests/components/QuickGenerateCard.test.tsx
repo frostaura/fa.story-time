@@ -10,8 +10,10 @@ describe('QuickGenerateCard', () => {
   const defaultProps = {
     durationMinutes: 7,
     error: null as string | null,
+    feedback: null as { message: string; tone: 'error' | 'success' | 'info' } | null,
+    generateButtonLabel: ui.generateStory,
     homeStatus: {
-      defaultChildName: 'Dreamer',
+      defaultChildName: 'Child',
       durationSliderVisible: true,
       durationMinMinutes: 5,
       durationMaxMinutes: 15,
@@ -25,13 +27,18 @@ describe('QuickGenerateCard', () => {
       },
     },
     isGenerating: false,
+    isOneShotDetailsExpanded: false,
     mode: storyModes.series as 'series' | 'one-shot',
     onChildNameChange: vi.fn(),
     onDurationChange: vi.fn(),
     onGenerate: vi.fn(),
     onModeChange: vi.fn(),
+    onOneShotDetailsExpandedChange: vi.fn(),
+    onSelectedSeriesIdChange: vi.fn(),
     onOneShotChange: vi.fn(),
     onReducedMotionChange: vi.fn(),
+    selectedSeriesId: 'new',
+    seriesOptions: [],
     oneShotCustomization: {
       arcName: '',
       companionName: '',
@@ -41,12 +48,27 @@ describe('QuickGenerateCard', () => {
       narrationStyle: '',
     },
     profile: { childName: 'Ari', reducedMotion: false },
+    selectedSeriesLabel: null as string | null,
     ui,
     visible: true,
   }
 
-  it('renders one-shot customization fields when mode is one-shot', () => {
+  it('keeps one-shot customization collapsed until requested', () => {
     render(<QuickGenerateCard {...defaultProps} mode={storyModes.oneShot} />)
+
+    expect(screen.getByText('Keep it simple or add a few custom touches. StoryTime will fill in anything you leave blank.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add optional details' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Story arc')).not.toBeInTheDocument()
+  })
+
+  it('renders one-shot customization fields when expanded', () => {
+    render(
+      <QuickGenerateCard
+        {...defaultProps}
+        isOneShotDetailsExpanded
+        mode={storyModes.oneShot}
+      />,
+    )
 
     expect(screen.getByLabelText('Story arc')).toBeInTheDocument()
     expect(screen.getByLabelText('Companion')).toBeInTheDocument()
@@ -103,11 +125,36 @@ describe('QuickGenerateCard', () => {
     expect(onModeChange).toHaveBeenCalledWith(storyModes.oneShot)
   })
 
+  it('shows explicit series selection when prior series exist', () => {
+    render(
+      <QuickGenerateCard
+        {...defaultProps}
+        seriesOptions={[{ seriesId: 'series-1', label: 'Moonlit Meadow · Episode 2' }]}
+      />,
+    )
+
+    expect(screen.getByLabelText('Series continuation')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Start a new series' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Moonlit Meadow · Episode 2' })).toBeInTheDocument()
+  })
+
+  it('shows a calm support note when saved series are temporarily unavailable', () => {
+    render(
+      <QuickGenerateCard
+        {...defaultProps}
+        seriesSupportMessage={ui.seriesSyncHint}
+      />,
+    )
+
+    expect(screen.getByTestId('series-support-copy')).toHaveTextContent(ui.seriesSyncHint)
+  })
+
   it('calls onOneShotChange when one-shot customization fields change', () => {
     const onOneShotChange = vi.fn()
     render(
       <QuickGenerateCard
         {...defaultProps}
+        isOneShotDetailsExpanded
         mode={storyModes.oneShot}
         onOneShotChange={onOneShotChange}
       />,
@@ -128,6 +175,22 @@ describe('QuickGenerateCard', () => {
     expect(onOneShotChange).toHaveBeenCalledWith('narrationStyle', 'gentle')
   })
 
+  it('calls onOneShotDetailsExpandedChange when the disclosure button is pressed', async () => {
+    const onOneShotDetailsExpandedChange = vi.fn()
+
+    render(
+      <QuickGenerateCard
+        {...defaultProps}
+        mode={storyModes.oneShot}
+        onOneShotDetailsExpandedChange={onOneShotDetailsExpandedChange}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add optional details' }))
+
+    expect(onOneShotDetailsExpandedChange).toHaveBeenCalledWith(true)
+  })
+
   it('hides duration slider when durationSliderVisible is false', () => {
     render(
       <QuickGenerateCard
@@ -143,5 +206,17 @@ describe('QuickGenerateCard', () => {
     render(<QuickGenerateCard {...defaultProps} isGenerating />)
 
     expect(screen.getByTestId('generate-story-button')).toBeDisabled()
+  })
+
+  it('uses a mode-specific label for one-shot generation', () => {
+    render(
+      <QuickGenerateCard
+        {...defaultProps}
+        generateButtonLabel={ui.generateOneShot}
+        mode={storyModes.oneShot}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Generate one-shot' })).toBeInTheDocument()
   })
 })

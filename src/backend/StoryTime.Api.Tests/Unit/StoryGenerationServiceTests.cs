@@ -21,7 +21,7 @@ public sealed class StoryGenerationServiceTests
             CancellationToken.None);
 
         var second = await service.GenerateAsync(
-            new GenerateStoryRequest("user-series", "Mila", "series", 6, first.SeriesId, null, false),
+            new GenerateStoryRequest("user-series", "Mila", "series", 6, first.SeriesId, null, false, StoryBible: first.StoryBible),
             CancellationToken.None);
 
         Assert.NotNull(first.SeriesId);
@@ -33,7 +33,7 @@ public sealed class StoryGenerationServiceTests
     }
 
     [Fact]
-    public async Task GenerateAsync_PersistsSeriesBible_WhenPersistenceIsEnabled()
+    public async Task GenerateAsync_UsesClientStoryBibleSnapshot_WithoutServerPersistenceSurface()
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), "storytime-bible-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempRoot);
@@ -42,12 +42,7 @@ public sealed class StoryGenerationServiceTests
         try
         {
             var options = StoryTimeOptionsFactory.Create();
-            options.Generation.PersistSeriesStoryBible = true;
-            options.Generation.PersistContinuityFacts = true;
-            options.Generation.StoryBibleFilePath = storyBiblePath;
             options.Generation.Fallbacks.PersistentRecurringCharacterAlias = "Stella";
-            options.Generation.NarrativeTemplates.PersistedArcObjective = "PersistedArc::{ArcName}";
-            options.Generation.NarrativeTemplates.PersistedEpisodeSummary = "PersistedEpisode::{EpisodeNumber}";
 
             var firstService = CreateService(options);
             var first = await firstService.GenerateAsync(
@@ -56,29 +51,16 @@ public sealed class StoryGenerationServiceTests
 
             var secondService = CreateService(options);
             var continuation = await secondService.GenerateAsync(
-                new GenerateStoryRequest("user-series-persist", "Mila", "series", 6, first.SeriesId, null, false),
+                new GenerateStoryRequest("user-series-persist", "Mila", "series", 6, first.SeriesId, null, false, StoryBible: first.StoryBible),
                 CancellationToken.None);
 
             Assert.StartsWith("Previously:", continuation.Recap, StringComparison.Ordinal);
             Assert.NotNull(continuation.StoryBible);
             Assert.Equal(2, continuation.StoryBible!.ArcEpisodeNumber);
-            Assert.True(File.Exists(storyBiblePath));
-            var persisted = await File.ReadAllTextAsync(storyBiblePath);
-            Assert.DoesNotContain("\"RecurringCharacter\":\"Mila\"", persisted, StringComparison.Ordinal);
-            Assert.Contains("\"RecurringCharacter\":\"Stella\"", persisted, StringComparison.Ordinal);
-            Assert.Contains("\"ContinuityFacts\":[", persisted, StringComparison.Ordinal);
-            Assert.NotNull(continuation.StoryBible);
-            Assert.DoesNotContain(continuation.StoryBible!.ArcObjective, persisted, StringComparison.Ordinal);
-            Assert.DoesNotContain(continuation.StoryBible.PreviousEpisodeSummary, persisted, StringComparison.Ordinal);
-
-            using var persistedDocument = JsonDocument.Parse(persisted);
-            var persistedEntry = persistedDocument.RootElement[0];
-            var persistedArcName = persistedEntry.GetProperty("ArcName").GetString() ?? string.Empty;
-            Assert.False(string.IsNullOrWhiteSpace(persistedArcName));
-            Assert.Equal(
-                options.Generation.NarrativeTemplates.PersistedArcObjective.Replace("{ArcName}", persistedArcName, StringComparison.Ordinal),
-                persistedEntry.GetProperty("ArcObjective").GetString());
-            Assert.Equal("PersistedEpisode::2", persistedEntry.GetProperty("LastEpisodeSummary").GetString());
+            Assert.NotNull(first.StoryBible);
+            Assert.Equal(first.StoryBible!.VisualIdentity, continuation.StoryBible.VisualIdentity);
+            Assert.Equal(first.StoryBible.AudioAnchorMetadata, continuation.StoryBible.AudioAnchorMetadata);
+            Assert.False(File.Exists(storyBiblePath));
         }
         finally
         {
@@ -104,7 +86,7 @@ public sealed class StoryGenerationServiceTests
             new GenerateStoryRequest("user-template-series", "Mila", "series", 6, null, null, false),
             CancellationToken.None);
         var second = await service.GenerateAsync(
-            new GenerateStoryRequest("user-template-series", "Mila", "series", 6, first.SeriesId, null, false),
+            new GenerateStoryRequest("user-template-series", "Mila", "series", 6, first.SeriesId, null, false, StoryBible: first.StoryBible),
             CancellationToken.None);
 
         Assert.StartsWith("BEGIN::Mila:", first.Recap, StringComparison.Ordinal);

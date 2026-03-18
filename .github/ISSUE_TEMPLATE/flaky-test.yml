@@ -1,0 +1,54 @@
+name: Flaky test remediation
+description: Track a flaky test quarantine or remediation plan.
+title: "[Flaky Test] "
+labels:
+  - flaky-test
+body:
+  - type: input
+    id: test-path
+    attributes:
+      label: Test path
+      description: Provide the exact file path and test name.
+      placeholder: src/frontend/tests/playwright/quick-generate.browser.e2e.spec.ts :: UC-005 duration paywall shows upgrade metadata
+    validations:
+      required: true
+  - type: dropdown
+    id: owning-domain
+    attributes:
+      label: Owning domain
+      options:
+        - backend
+        - frontend
+        - frontend+platform
+    validations:
+      required: true
+  - type: textarea
+    id: failure-shape
+    attributes:
+      label: Failure shape
+      description: Describe how the test flakes and include the last failing signal.
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Remediation owner
+      description: GitHub handle of the person accountable for stabilizing the test.
+      placeholder: "@deanmartin"
+    validations:
+      required: true
+  - type: input
+    id: expiry
+    attributes:
+      label: Quarantine expiry date
+      description: ISO date when the quarantine must be revisited.
+      placeholder: "2026-03-19"
+    validations:
+      required: true
+  - type: textarea
+    id: restoration-plan
+    attributes:
+      label: Restoration plan
+      description: Explain the stabilization plan and the condition for removing quarantine.
+    validations:
+      required: true

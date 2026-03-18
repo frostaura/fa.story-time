@@ -20,7 +20,7 @@ This document is the operational reference for runtime configuration used by Sto
 | `StoryTime:Ui:DurationMinMinutes` | number | `5` |
 | `StoryTime:Ui:DurationMaxMinutes` | number | `15` |
 | `StoryTime:Ui:DurationDefaultMinutes` | number | `6` |
-| `StoryTime:Ui:DefaultChildName` | string | `"Dreamer"` |
+| `StoryTime:Ui:DefaultChildName` | string | `"Child"` |
 | `StoryTime:ApiRoutes:HomeStatus` | string | `"/api/home/status"` |
 | `StoryTime:ApiRoutes:SubscriptionWebhook` | string | `"/api/subscription/webhook"` |
 | `StoryTime:ApiRoutes:SubscriptionPaywall` | string | `"/api/subscription/{softUserId}/paywall"` |
@@ -35,23 +35,20 @@ This document is the operational reference for runtime configuration used by Sto
 | `StoryTime:ApiRoutes:StoryFavorite` | string | `"/api/stories/{storyId}/favorite"` |
 | `StoryTime:ApiRoutes:Library` | string | `"/api/library/{softUserId}"` |
 | `StoryTime:ApiRoutes:LibraryStorageAudit` | string | `"/api/library/{softUserId}/storage-audit"` |
-| `StoryTime:Cors:AllowedOrigins` | array | `["http://localhost:5173", "http://127.0.0.1:5173"]` |
+| `StoryTime:Cors:AllowedOrigins` | array | `["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173", "http://127.0.0.1:4173"]` |
 | `StoryTime:Cors:AllowedMethods` | array | `["GET", "POST", "PUT", "OPTIONS"]` |
-| `StoryTime:Cors:AllowedHeaders` | array | `["Content-Type", "Authorization"]` |
+| `StoryTime:Cors:AllowedHeaders` | array | `["Content-Type", "Authorization", "X-StoryTime-Gate-Token"]` |
 | `StoryTime:TierLimits:Trial:Concurrency` | number | `1` |
 | `StoryTime:TierLimits:Trial:CooldownMinutes` | number | `30` |
 | `StoryTime:TierLimits:Trial:MaxDurationMinutes` | number | `10` |
-| `StoryTime:TierLimits:Plus:Concurrency` | number | `1` |
-| `StoryTime:TierLimits:Plus:CooldownMinutes` | number | `30` |
-| `StoryTime:TierLimits:Plus:MaxDurationMinutes` | number | `10` |
+| `StoryTime:TierLimits:Plus:Concurrency` | number | `2` |
+| `StoryTime:TierLimits:Plus:CooldownMinutes` | number | `10` |
+| `StoryTime:TierLimits:Plus:MaxDurationMinutes` | number | `12` |
 | `StoryTime:TierLimits:Premium:Concurrency` | number | `3` |
-| `StoryTime:TierLimits:Premium:CooldownMinutes` | number | `15` |
+| `StoryTime:TierLimits:Premium:CooldownMinutes` | number | `5` |
 | `StoryTime:TierLimits:Premium:MaxDurationMinutes` | number | `15` |
 | `StoryTime:Generation:ForceProceduralPosterFallback` | boolean | `false` |
-| `StoryTime:Generation:PersistSeriesStoryBible` | boolean | `true` |
-| `StoryTime:Generation:PersistContinuityFacts` | boolean | `true` |
 | `StoryTime:Generation:ContinuityFactRetentionLimit` | number | `30` |
-| `StoryTime:Generation:StoryBibleFilePath` | string | `"data/story-bibles.json"` |
 | `StoryTime:Generation:MinutesPerScene` | number | `2` |
 | `StoryTime:Generation:MinSceneCount` | number | `3` |
 | `StoryTime:Generation:MaxSceneCount` | number | `8` |
@@ -97,12 +94,12 @@ This document is the operational reference for runtime configuration used by Sto
 | `StoryTime:Generation:ProceduralPosterGeometry:StarBaseRadius` | number | `1` |
 | `StoryTime:Generation:ProceduralPosterGeometry:StarRadiusRange` | number | `3` |
 | `StoryTime:Generation:ProceduralPosterGeometry:StarOpacity` | number | `0.55` |
-| `StoryTime:Generation:PosterModelProvider:Enabled` | boolean | `true` |
+| `StoryTime:Generation:PosterModelProvider:Enabled` | boolean | `false` |
 | `StoryTime:Generation:PosterModelProvider:LocalFallbackEnabled` | boolean | `true` |
 | `StoryTime:Generation:PosterModelProvider:Endpoint` | string | `""` |
 | `StoryTime:Generation:PosterModelProvider:ApiKey` | string | `""` |
 | `StoryTime:Generation:PosterModelProvider:TimeoutSeconds` | number | `1` |
-| `StoryTime:Generation:NarrationProvider:Enabled` | boolean | `true` |
+| `StoryTime:Generation:NarrationProvider:Enabled` | boolean | `false` |
 | `StoryTime:Generation:NarrationProvider:LocalFallbackEnabled` | boolean | `true` |
 | `StoryTime:Generation:NarrationProvider:Endpoint` | string | `""` |
 | `StoryTime:Generation:NarrationProvider:ApiKey` | string | `""` |
@@ -141,7 +138,7 @@ This document is the operational reference for runtime configuration used by Sto
 | `StoryTime:Generation:Fallbacks:CalmOpener` | string | `"A calm hush settles in"` |
 | `StoryTime:Generation:Fallbacks:CalmTransition` | string | `"the moment flows gently forward"` |
 | `StoryTime:Generation:Fallbacks:CalmCloser` | string | `"Everyone rests with a steady breath."` |
-| `StoryTime:Generation:Fallbacks:PersistentRecurringCharacterAlias` | string | `"Dreamer"` |
+| `StoryTime:Generation:Fallbacks:PersistentRecurringCharacterAlias` | string | `"Child"` |
 | `StoryTime:Generation:Fallbacks:PosterLayers:0:Role` | string | `"BACKGROUND"` |
 | `StoryTime:Generation:Fallbacks:PosterLayers:0:SpeedMultiplier` | number | `0.2` |
 | `StoryTime:Generation:Fallbacks:PosterLayers:1:Role` | string | `"MIDGROUND_1"` |
@@ -150,12 +147,12 @@ This document is the operational reference for runtime configuration used by Sto
 | `StoryTime:Generation:Fallbacks:PosterLayers:2:SpeedMultiplier` | number | `1.0` |
 | `StoryTime:Generation:Fallbacks:PosterLayers:3:Role` | string | `"PARTICLES"` |
 | `StoryTime:Generation:Fallbacks:PosterLayers:3:SpeedMultiplier` | number | `1.3` |
-| `StoryTime:Generation:AiOrchestration:Enabled` | boolean | `true` |
+| `StoryTime:Generation:AiOrchestration:Enabled` | boolean | `false` |
 | `StoryTime:Generation:AiOrchestration:LocalFallbackEnabled` | boolean | `false` |
 | `StoryTime:Generation:AiOrchestration:EnforceOpenRouterEndpoint` | boolean | `true` |
 | `StoryTime:Generation:AiOrchestration:Endpoint` | string | `"https://openrouter.ai/api/v1/chat/completions"` |
 | `StoryTime:Generation:AiOrchestration:ApiKey` | string | `""` |
-| `StoryTime:Generation:AiOrchestration:OpenRouterReferer` | string | `"https://storytime.local"` |
+| `StoryTime:Generation:AiOrchestration:OpenRouterReferer` | string | `""` |
 | `StoryTime:Generation:AiOrchestration:OpenRouterTitle` | string | `"StoryTime"` |
 | `StoryTime:Generation:AiOrchestration:Model` | string | `"storytime-orchestrator"` |
 | `StoryTime:Generation:AiOrchestration:TimeoutSeconds` | number | `15` |
@@ -191,13 +188,15 @@ This document is the operational reference for runtime configuration used by Sto
 | `StoryTime:ParentGate:RequireAssertion` | boolean | `true` |
 | `StoryTime:ParentGate:RequireChallengeBoundAssertion` | boolean | `true` |
 | `StoryTime:ParentGate:RequireRegisteredCredential` | boolean | `true` |
-| `StoryTime:ParentGate:RequireUserVerification` | boolean | `false` |
+| `StoryTime:ParentGate:RequireUserVerification` | boolean | `true` |
 | `StoryTime:ParentGate:RelyingPartyId` | string | `"localhost"` |
 | `StoryTime:ParentGate:AssertionType` | string | `"webauthn.get"` |
 | `StoryTime:ParentGate:AllowedOrigins` | array | `["http://localhost", "http://127.0.0.1"]` |
+| `StoryTime:ParentGate:StateFilePath` | string | `"data/parent-state.json"` |
 | `StoryTime:ParentDefaults:NotificationsEnabled` | boolean | `false` |
 | `StoryTime:ParentDefaults:AnalyticsEnabled` | boolean | `false` |
-| `StoryTime:Catalog:Provider` | string | `"FileSystem"` |
+| `StoryTime:ParentDefaults:KidShelfEnabled` | boolean | `false` |
+| `StoryTime:Catalog:Provider` | string | `"InMemory"` |
 | `StoryTime:Catalog:FilePath` | string | `"data/story-catalog.json"` |
 | `StoryTime:Catalog:LibraryTitleWithArcTemplate` | string | `"{ModeLabel} - {ArcName} #{EpisodeNumber}"` |
 | `StoryTime:Catalog:LibraryTitleWithoutArcTemplate` | string | `"{ModeLabel} story {GeneratedAtHHmm}"` |
@@ -210,10 +209,13 @@ This document is the operational reference for runtime configuration used by Sto
 | `StoryTime:Catalog:SemanticNarrativeTextMinWords` | number | `8` |
 | `StoryTime:Catalog:NarrativeLeakageMarkers` | array | `["scene ", "previously:", "episode ", " arc ", "companion:", "setting:", "mood:"]` |
 | `StoryTime:Checkout:DefaultTier` | string | `"Trial"` |
-| `StoryTime:Checkout:UpgradeTier` | string | `"Premium"` |
+| `StoryTime:Checkout:TierOrder` | array | `["Trial", "Plus", "Premium"]` |
 | `StoryTime:Checkout:UpgradeUrl` | string | `"/subscribe"` |
+| `StoryTime:Checkout:DefaultReturnUrl` | string | `""` |
 | `StoryTime:Checkout:SessionTtlMinutes` | number | `15` |
-| `StoryTime:Checkout:Provider:Mode` | string | `"External"` |
+| `StoryTime:Checkout:StateFilePath` | string | `"data/subscription-state.json"` |
+| `StoryTime:Checkout:WebhookSharedSecret` | string | `""` |
+| `StoryTime:Checkout:Provider:Mode` | string | `"InMemory"` |
 | `StoryTime:Checkout:Provider:LocalFallbackEnabled` | boolean | `true` |
 | `StoryTime:Checkout:Provider:Endpoint` | string | `""` |
 | `StoryTime:Checkout:Provider:ApiKey` | string | `""` |
@@ -265,7 +267,8 @@ This document is the operational reference for runtime configuration used by Sto
 
 ### Backend validation highlights
 
-- `StoryTime:TierLimits` must include at least the configured default tier (trial by default).
+- `StoryTime:TierLimits` must include at least the configured default tier (trial by default), and `StoryTime:Checkout:TierOrder` must start at that default tier and reference only configured tier keys.
+- Series continuity is client-owned: the client is expected to post the latest `StoryBible` snapshot back on continuation requests, and the backend no longer exposes server-persistence Story Bible knobs in shipped config.
 - `StoryTime:Generation:PosterLayers` normalizes to 3-5 layers and must include required roles (`BACKGROUND`, `FOREGROUND`, `PARTICLES`).
 - `StoryTime:Generation:PosterRoleSpeedMultipliers` must define at least one role and compatible role dependencies.
 - `StoryTime:Generation:AiOrchestration` always requires OpenRouter endpoint semantics (`Endpoint` targets `openrouter.ai`, `EnforceOpenRouterEndpoint=true`, `LocalFallbackEnabled=false`); when `Enabled=true`, `Model`, `TimeoutSeconds`, `StageResponseFormatInstruction`, and `StageNames:*` are required.
@@ -277,7 +280,7 @@ This document is the operational reference for runtime configuration used by Sto
 
 | Key | Default (`.env.example`) |
 | --- | --- |
-| `VITE_API_BASE_URL` | `` |
+| `VITE_API_BASE_URL` | `/` |
 | `VITE_API_ROUTE_HOME_STATUS` | `/api/home/status` |
 | `VITE_API_ROUTE_STORIES_BASE` | `/api/stories` |
 | `VITE_API_ROUTE_STORIES_GENERATE` | `/api/stories/generate` |
@@ -287,7 +290,7 @@ This document is the operational reference for runtime configuration used by Sto
 | `VITE_DEFAULT_DURATION_MINUTES` | `5` |
 | `VITE_DEFAULT_DURATION_MAX_MINUTES` | `15` |
 | `VITE_DEFAULT_DURATION_SELECTION` | `6` |
-| `VITE_DEFAULT_CHILD_NAME` | `Dreamer` |
+| `VITE_DEFAULT_CHILD_NAME` | `Child` |
 | `VITE_DEFAULT_NOTIFICATIONS_ENABLED` | `false` |
 | `VITE_DEFAULT_ANALYTICS_ENABLED` | `false` |
 | `VITE_HOME_STATUS_QUICK_GENERATE_VISIBLE` | `true` |
@@ -301,6 +304,8 @@ This document is the operational reference for runtime configuration used by Sto
 | `VITE_STORAGE_KEY_SOFT_USER_ID` | `softUserId` |
 | `VITE_STORAGE_KEY_CHILD_PROFILE` | `childProfile` |
 | `VITE_STORAGE_KEY_PARENT_CREDENTIAL` | `parentCredential` |
+| `VITE_STORAGE_KEY_PENDING_CHECKOUT` | `pendingCheckout` |
+| `VITE_PARENT_GATE_RP_ID` | `localhost` |
 | `VITE_PARENT_GATE_WEBAUTHN_RP_DISPLAY_NAME` | `StoryTime Parent Gate` |
 | `VITE_PARENT_GATE_WEBAUTHN_USER_DISPLAY_NAME` | `Parent` |
 | `VITE_PARENT_GATE_WEBAUTHN_TIMEOUT_MS` | `60000` |
@@ -323,9 +328,11 @@ This document is the operational reference for runtime configuration used by Sto
 ### Frontend validation highlights
 
 - `runtime.ts` requires all configured keys; missing or invalid values throw during startup.
+- `VITE_API_BASE_URL` is an explicit required runtime contract; the frontend does not fall back to `window.location.origin`.
 - WebAuthn fields are constrained to valid enum/string domains (`attestation`, `residentKey`, `userVerification`).
 - `VITE_PARENT_GATE_WEBAUTHN_USER_ID_MAX_LENGTH` must be a positive integer ≤ `VITE_PARENT_GATE_WEBAUTHN_USER_ID_PROTOCOL_MAX_LENGTH`.
 - Route keys are normalized to leading-slash route paths.
+- `scripts/validate-env-examples.py` validates that frontend route/default mirrors (`VITE_API_ROUTE_*`, duration defaults, child default, and home-status booleans) stay aligned with backend `appsettings.json`.
 
 ### Intentional code-local constants
 
@@ -339,6 +346,11 @@ This document is the operational reference for runtime configuration used by Sto
 ### Production deployment notes
 
 - **`StoryTime:ParentGate:RelyingPartyId`**: Defaults to `"localhost"` for local development. In production, this **must** be overridden via environment variable (`StoryTime__ParentGate__RelyingPartyId`) or a production `appsettings.Production.json` to match the deployment domain (e.g., `"storytime.example.com"`). WebAuthn assertions will fail if the relying party ID does not match the origin used by the browser.
-- **`StoryTime:ParentGate:AllowedOrigins`**: Must be updated to include the production origin(s) (e.g., `["https://storytime.example.com"]`).
+- **`StoryTime:ParentGate:AllowedOrigins`**: Must be updated to include the production origin(s) (e.g., `["https://storytime.example.com"]`). Local-development entries without an explicit port now allow that host on any localhost dev port, which keeps `http://localhost:5173` and preview ports working without enumerating each one.
+- **Local host story**: StoryTime's shipped local WebAuthn configuration supports passkey verification on `localhost`. If the frontend is opened on `127.0.0.1`, the UI should surface recovery guidance and direct QA back to the equivalent `localhost` URL before verification begins.
+- **`StoryTime:Checkout:DefaultReturnUrl`**: Defaults to blank so deployment code does not ship a baked-in checkout callback host. The frontend sends an explicit return URL during normal checkout creation; set this backend fallback only for environments that need a server-side default.
+- **`StoryTime:Generation:AiOrchestration:OpenRouterReferer`**: Defaults to blank and must be supplied explicitly whenever AI orchestration is enabled against OpenRouter. Local deterministic generation does not need this header because the shipped default keeps AI orchestration disabled.
 - **`StoryTime:Cors:AllowedOrigins`**: Must include the production frontend origin.
+- **`StoryTime:Checkout:WebhookSharedSecret`**: Shipped blank by default. Local/test webhook flows must provide it through environment variables or launch-time overrides; production must use secret management.
 - **API key placeholders** (`StoryTime:Generation:PosterModelProvider:ApiKey`, etc.): Empty in source; must be provided via environment variables or secret management in production.
+- **Compose/full-stack overrides**: Root `.env.example` now includes `FRONTEND_PORT` and `FRONTEND_API_BASE_URL` so `docker compose up --build -d` can run the browser-facing frontend and backend together without editing source files.

@@ -7,10 +7,14 @@ export type PosterLayer = {
 }
 
 export type StoryBible = {
+  seriesId?: string
+  visualIdentity?: string
+  recurringCharacter?: string
   arcName: string
   arcEpisodeNumber: number
   arcObjective: string
   previousEpisodeSummary: string
+  continuityFacts?: string[]
   audioAnchorMetadata: {
     themeTrackId: string
     narrationStyle: string
@@ -78,6 +82,7 @@ export type StoryApprovalResponse = {
 export type ParentSettingsResponse = {
   notificationsEnabled: boolean
   analyticsEnabled: boolean
+  kidShelfEnabled: boolean
 }
 
 export type ChildProfile = {
@@ -115,7 +120,7 @@ export type LibraryItem = {
 export type LibraryResponse = {
   recent: LibraryItem[]
   favorites: LibraryItem[]
-  kidModeEnabled: boolean
+  kidShelfEnabled: boolean
 }
 
 export type SubscriptionPaywallResponse = {

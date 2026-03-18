@@ -3,19 +3,19 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using StoryTime.Api.Contracts;
+using StoryTime.Api.Domain;
 
 namespace StoryTime.Api.Tests.E2E;
 
 public sealed class StoryFlowE2ETests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly HttpClient _client = factory
-        .WithWebHostBuilder(builder =>
-            builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false"))
-        .CreateClient();
+    private const string TestWebhookSecret = "storytime-local-webhook-secret";
+    private readonly HttpClient _client = CreateConfiguredClient(factory);
 
     [Fact]
     public async Task PremiumSeriesFlow_IsCoherentAndStorageSafe()
     {
+        var gateToken = await CreateGateTokenAsync("user-premium");
         using var webhook = await _client.PostAsJsonAsync(
             "/api/subscription/webhook",
             new SubscriptionWebhookRequest("user-premium", "Premium", true));
@@ -38,7 +38,7 @@ public sealed class StoryFlowE2ETests(WebApplicationFactory<Program> factory) : 
 
         using var continuationResponse = await _client.PostAsJsonAsync(
             "/api/stories/generate",
-            new GenerateStoryRequest("user-premium", "Lena", "series", 15, firstStory.SeriesId, null, false));
+            new GenerateStoryRequest("user-premium", "Lena", "series", 15, firstStory.SeriesId, null, false, StoryBible: firstStory.StoryBible));
 
         continuationResponse.EnsureSuccessStatusCode();
         var continuation = await continuationResponse.Content.ReadFromJsonAsync<GenerateStoryResponse>();
@@ -50,7 +50,9 @@ public sealed class StoryFlowE2ETests(WebApplicationFactory<Program> factory) : 
         Assert.True(continuation.StoryBible!.ArcEpisodeNumber >= 2);
         Assert.False(string.IsNullOrWhiteSpace(continuation.StoryBible.AudioAnchorMetadata.ThemeTrackId));
 
-        using var approve = await _client.PostAsync($"/api/stories/{continuation.StoryId}/approve", content: null);
+        using var approve = await _client.PostAsJsonAsync(
+            $"/api/stories/{continuation.StoryId}/approve",
+            new StoryApprovalRequest("user-premium", gateToken));
         approve.EnsureSuccessStatusCode();
         var approval = await approve.Content.ReadFromJsonAsync<StoryApprovalResponse>();
         Assert.NotNull(approval);
@@ -79,7 +81,7 @@ public sealed class StoryFlowE2ETests(WebApplicationFactory<Program> factory) : 
         Assert.True(generated.FullAudioReady);
         Assert.StartsWith("data:audio/wav;base64,", generated.FullAudio);
 
-        var library = await _client.GetFromJsonAsync<LibraryResponse>("/api/library/user-one-shot?kidMode=false");
+        var library = await _client.GetFromJsonAsync<LibraryResponse>("/api/library/user-one-shot");
         Assert.NotNull(library);
         Assert.NotEmpty(library!.Recent);
         Assert.All(library.Recent, item => Assert.Null(item.FullAudio));
@@ -92,7 +94,7 @@ public sealed class StoryFlowE2ETests(WebApplicationFactory<Program> factory) : 
     }
 
     [Fact]
-    public async Task SeriesPersistence_StripsNarrativeFieldsFromPersistedStoryBible()
+    public async Task SeriesContinuation_UsesClientStoryBibleSnapshot_WithoutPersistingServerFiles()
     {
         var storyBibleFilePath = Path.Combine(
             Path.GetTempPath(),
@@ -104,13 +106,10 @@ public sealed class StoryFlowE2ETests(WebApplicationFactory<Program> factory) : 
             Directory.CreateDirectory(storyBibleDirectory);
         }
 
-        using var client = factory.WithWebHostBuilder(builder =>
+        using var client = CreateConfiguredClient(factory.WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false");
-            builder.UseSetting("StoryTime:Generation:PersistSeriesStoryBible", "true");
-            builder.UseSetting("StoryTime:Generation:PersistContinuityFacts", "true");
-            builder.UseSetting("StoryTime:Generation:StoryBibleFilePath", storyBibleFilePath);
-        }).CreateClient();
+            builder.UseSetting("StoryTime:Generation:ContinuityFactRetentionLimit", "30");
+        }));
 
         try
         {
@@ -135,20 +134,15 @@ public sealed class StoryFlowE2ETests(WebApplicationFactory<Program> factory) : 
 
             using var secondResponse = await client.PostAsJsonAsync(
                 "/api/stories/generate",
-                new GenerateStoryRequest(userId, "Lena", "series", 15, firstStory.SeriesId, null, false));
+                new GenerateStoryRequest(userId, "Lena", "series", 15, firstStory.SeriesId, null, false, StoryBible: firstStory.StoryBible));
             secondResponse.EnsureSuccessStatusCode();
             var continuation = await secondResponse.Content.ReadFromJsonAsync<GenerateStoryResponse>();
             Assert.NotNull(continuation);
             Assert.NotNull(continuation!.StoryBible);
 
-            Assert.True(File.Exists(storyBibleFilePath));
-            var persisted = await File.ReadAllTextAsync(storyBibleFilePath);
-            Assert.DoesNotContain(continuation.StoryBible!.ArcObjective, persisted, StringComparison.Ordinal);
-            Assert.DoesNotContain(continuation.StoryBible.PreviousEpisodeSummary, persisted, StringComparison.Ordinal);
-
-            using var persistedJson = JsonDocument.Parse(persisted);
-            var persistedEntry = persistedJson.RootElement[0];
-            Assert.Equal("Episode 2 completed.", persistedEntry.GetProperty("LastEpisodeSummary").GetString());
+            Assert.StartsWith("Previously:", continuation.Recap);
+            Assert.Equal(continuation.SeriesId, continuation.StoryBible.SeriesId);
+            Assert.False(File.Exists(storyBibleFilePath));
         }
         finally
         {
@@ -164,4 +158,52 @@ public sealed class StoryFlowE2ETests(WebApplicationFactory<Program> factory) : 
         bool ContainsNarrativeText,
         bool ContainsNarrativeAudioPayload,
         bool ContainsSemanticNarrativeLeakage);
+
+    private static HttpClient CreateConfiguredClient(WebApplicationFactory<Program> factory)
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "storytime-e2e-tests", Guid.NewGuid().ToString("N"));
+        var client = factory
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("StoryTime:Generation:AiOrchestration:Enabled", "false");
+                builder.UseSetting("StoryTime:Generation:AiOrchestration:LocalFallbackEnabled", "false");
+                builder.UseSetting("StoryTime:Checkout:WebhookSharedSecret", TestWebhookSecret);
+                builder.UseSetting("StoryTime:ParentGate:RequireAssertion", "false");
+                builder.UseSetting("StoryTime:ParentGate:RequireChallengeBoundAssertion", "false");
+                builder.UseSetting("StoryTime:ParentGate:RequireRegisteredCredential", "false");
+                builder.UseSetting("StoryTime:Catalog:Provider", "InMemory");
+                builder.UseSetting("StoryTime:Catalog:FilePath", Path.Combine(tempRoot, "catalog.json"));
+                builder.UseSetting("StoryTime:ParentGate:StateFilePath", Path.Combine(tempRoot, "parent-state.json"));
+                builder.UseSetting("StoryTime:Checkout:StateFilePath", Path.Combine(tempRoot, "subscription-state.json"));
+            })
+            .CreateClient();
+        AddWebhookSecret(client);
+        return client;
+    }
+
+    private static void AddWebhookSecret(HttpClient client)
+    {
+        if (!client.DefaultRequestHeaders.Contains("X-StoryTime-Webhook-Secret"))
+        {
+            client.DefaultRequestHeaders.Add("X-StoryTime-Webhook-Secret", TestWebhookSecret);
+        }
+    }
+
+    private async Task<string> CreateGateTokenAsync(string userId)
+    {
+        using var challengeResponse = await _client.PostAsync($"/api/parent/{userId}/gate/challenge", null);
+        challengeResponse.EnsureSuccessStatusCode();
+        var challenge = await challengeResponse.Content.ReadFromJsonAsync<ParentGateChallengeResponse>();
+        Assert.NotNull(challenge);
+
+        using var verifyResponse = await _client.PostAsJsonAsync(
+            $"/api/parent/{userId}/gate/verify",
+            new ParentGateVerifyRequest(
+                challenge!.ChallengeId,
+                new ParentGateAssertion(string.Empty, string.Empty, string.Empty, string.Empty, ParentGateAssertionTypes.WebAuthnGet)));
+        verifyResponse.EnsureSuccessStatusCode();
+        var gate = await verifyResponse.Content.ReadFromJsonAsync<ParentGateVerifyResponse>();
+        Assert.NotNull(gate);
+        return gate!.GateToken;
+    }
 }

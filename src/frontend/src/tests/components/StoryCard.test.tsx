@@ -43,12 +43,14 @@ describe('StoryCard', () => {
     render(<StoryCard {...defaultProps} />)
 
     expect(screen.getByRole('img', { name: 'Poster preview for Moonlight Adventure' })).toBeInTheDocument()
-    
+    expect(screen.getAllByText('Preview clip').length).toBeGreaterThan(0)
+    expect(screen.getByText('Series')).toBeInTheDocument()
     const teaserAudio = screen.getByTestId('test-story-teaser-audio-story-1') as HTMLAudioElement
     expect(teaserAudio).toBeInTheDocument()
     expect(teaserAudio).toHaveAttribute('src', 'data:audio/wav;base64,TEASER')
-    expect(teaserAudio).toHaveAttribute('preload', 'none')
+    expect(teaserAudio).toHaveAttribute('preload', 'metadata')
     expect(teaserAudio).toHaveAttribute('controls')
+    expect(screen.getAllByText('Preview ready · about 0:24').length).toBeGreaterThan(0)
 
     expect(screen.getByRole('button', { name: 'Approve full narration' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Favorite' })).toBeInTheDocument()
@@ -65,9 +67,30 @@ describe('StoryCard', () => {
     const fullAudio = screen.getByTestId('test-story-full-audio-story-1') as HTMLAudioElement
     expect(fullAudio).toBeInTheDocument()
     expect(fullAudio).toHaveAttribute('src', 'data:audio/wav;base64,FULL')
-    
-    // Approve button should be hidden if full audio is ready (or depending on logic, strict check says !fullAudioReady && approvalRequired)
+    expect(screen.getAllByText('Full narration unlocked').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Full narration ready · about 1:15').length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('test-story-teaser-audio-story-1')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Approve full narration' })).not.toBeInTheDocument()
+  })
+
+  it('renders compact favorites without duplicating the inline audio player', () => {
+    render(
+      <StoryCard
+        {...defaultProps}
+        approvalHint={ui.verifyParentToApprove}
+        approvalLocked
+        collectionLabel={ui.favorites}
+        testIdPrefix="favorite-story"
+        variant="compact"
+      />,
+    )
+
+    expect(screen.getByTestId('favorite-story-audio-summary-story-1')).toHaveTextContent(
+      'Preview clip',
+    )
+    expect(screen.getByRole('button', { name: 'Approve full narration' })).toBeDisabled()
+    expect(screen.queryByLabelText('Teaser narration for Moonlight Adventure')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('favorite-story-approval-hint-story-1')).not.toBeInTheDocument()
   })
 
   it('invokes approve and favorite callbacks', async () => {
@@ -80,14 +103,50 @@ describe('StoryCard', () => {
     expect(defaultProps.onToggleFavorite).toHaveBeenCalledWith('story-1')
   })
 
+  it('shows inline feedback and loading state for narration approval', () => {
+    render(
+      <StoryCard
+        {...defaultProps}
+        errorMessage="We couldn't unlock the full narration just yet. Try approving again."
+        isApproving
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Unlocking narration...' })).toBeDisabled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      "We couldn't unlock the full narration just yet. Try approving again.",
+    )
+  })
+
+  it('keeps approval disabled until parent verification is complete', () => {
+    render(
+      <StoryCard
+        {...defaultProps}
+        approvalHint={ui.verifyParentToApprove}
+        approvalLocked
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Approve full narration' })).toBeDisabled()
+    expect(screen.getByTestId('test-story-approval-hint-story-1')).toHaveTextContent(
+      ui.verifyParentToApprove,
+    )
+  })
+
   it('renders correct button state for favorites', () => {
     const favoriteStory: StoryArtifact = {
       ...story,
       isFavorite: true,
     }
     render(<StoryCard {...defaultProps} story={favoriteStory} />)
-    
+
     expect(screen.getByRole('button', { name: 'Unfavorite' })).toBeInTheDocument()
+  })
+
+  it('shows a local saving state while favorite changes are pending', () => {
+    render(<StoryCard {...defaultProps} isFavoriting />)
+
+    expect(screen.getByRole('button', { name: 'Saving...' })).toBeDisabled()
   })
 
   it('renders series progress badge when story has a story bible', () => {
