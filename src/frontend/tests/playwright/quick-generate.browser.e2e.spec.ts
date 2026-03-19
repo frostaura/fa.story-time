@@ -251,8 +251,8 @@ test('UC-004 kid shelf renders curated shelves from parent-managed backend state
 
   await page.goto('/')
   await expect(page.getByText('Kid Shelf')).toBeVisible()
-  await expect(page.getByText('Kid Recent Story')).toBeVisible()
-  await expect(page.getByText('Kid Favorite Story')).toBeVisible()
+  await expect(page.getByTestId('recent-story-kid-recent-1').getByText('Kid Recent Story')).toBeVisible()
+  await expect(page.getByTestId('favorite-story-kid-favorite-1').getByText('Kid Favorite Story')).toBeVisible()
 })
 
 test('UC-005 duration paywall shows upgrade metadata on 402 response', async ({ page }) => {
